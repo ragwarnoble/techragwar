@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="description"
+    content="Ragwar Tech project case study"
+  >
+
+  <title>Project | Ragwar Tech</title>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+</head>
+
+
+<body>
+
+<header class="navbar">
+
+  <a href="index.html" class="logo">
+    Ragwar<span>Tech</span>
+  </a>
+
+  <a
+    href="index.html#projects"
+    class="button secondary"
+  >
+    ← Projects
+  </a>
+
+</header>
+
+
+<main id="projectDetail"></main>
+
+
+<script type="module">
+
+import projects from "./js/projects.js";
+
+const params =
+  new URLSearchParams(window.location.search);
+
+const projectId =
+  params.get("id");
+
+const project =
+  projects.find(
+    item => item.id === projectId
+  );
+
+const container =
+  document.querySelector("#projectDetail");
+
+
+if (!project) {
+
+  container.innerHTML = `
+
+    <section class="section">
+
+      <p class="eyebrow">
+        ERROR
+      </p>
+
+      <h1>
+        Project not found.
+      </h1>
+
+      <p class="hero-description">
+        The requested project does not exist.
+      </p>
+
+      <div class="hero-actions">
+
+        <a
+          href="index.html#projects"
+          class="button primary"
+        >
+          Back to Projects
+        </a>
+
+      </div>
+
+    </section>
+
+  `;
+
+} else {
+
+  document.title =
+    `${project.title} | Ragwar Tech`;
+
+
+  container.innerHTML = `
+
+    <section class="section project-hero">
+
+      <p class="eyebrow">
+        ${project.type}
+      </p>
+
+      <h1>
+        ${project.title}
+      </h1>
+
+      <p class="project-lead">
+        ${project.description}
+      </p>
+
+      <div class="hero-actions">
+
+        <a
+          href="${project.github}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button primary"
+        >
+          GitHub →
+        </a>
+
+        <a
+          href="${project.demo}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button secondary"
+        >
+          Live Demo →
+        </a>
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="case-study-grid">
+
+        <div>
+
+          <p class="eyebrow">
+            OVERVIEW
+          </p>
+
+          <h2>
+            What I built.
+          </h2>
+
+        </div>
+
+        <div>
+
+          <p>
+            ${project.overview}
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <section class="section section-alt">
+
+      <div class="case-study-grid">
+
+        <div>
+
+          <p class="eyebrow">
+            PROBLEM
+          </p>
+
+          <h2>
+            The challenge.
+          </h2>
+
+        </div>
+
+        <div>
+
+          <p>
+            ${project.problem}
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="case-study-grid">
+
+        <div>
+
+          <p class="eyebrow">
+            SOLUTION
+          </p>
+
+          <h2>
+            The approach.
+          </h2>
+
+        </div>
+
+        <div>
+
+          <p>
+            ${project.solution}
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <section class="section section-alt">
+
+      <div class="section-heading">
+
+        <p class="eyebrow">
+          ARCHITECTURE
+        </p>
+
+        <h2>
+          How it works.
+        </h2>
+
+      </div>
+
+
+      <div class="architecture">
+
+        ${project.architecture
+          .map(
+            (item, index) => `
+
+              <div class="architecture-step">
+
+                <span>
+                  ${String(index + 1).padStart(2, "0")}
+                </span>
+
+                <strong>
+                  ${item}
+                </strong>
+
+              </div>
+
+            `
+          )
+          .join("")}
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-heading">
+
+        <p class="eyebrow">
+          TECHNOLOGY
+        </p>
+
+        <h2>
+          Built with.
+        </h2>
+
+      </div>
+
+
+      <div class="tags">
+
+        ${project.technologies
+          .map(
+            tech => `<span>${tech}</span>`
+          )
+          .join("")}
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <a
+        href="index.html#projects"
+        class="button secondary"
+      >
+        ← More Projects
+      </a>
+
+    </section>
+
+  `;
+
+}
+
+</script>
+
+</body>
+</html>
