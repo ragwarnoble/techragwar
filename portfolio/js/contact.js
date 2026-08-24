@@ -1,3 +1,7 @@
+const API_URL =
+  "http://localhost:8000/api";
+
+
 export function initializeContact() {
 
   const form =
@@ -14,22 +18,30 @@ export function initializeContact() {
 
   form.addEventListener(
     "submit",
-    event => {
+    async event => {
 
       event.preventDefault();
 
 
       const name =
-        document.querySelector("#name")
-          .value.trim();
+        document
+          .querySelector("#name")
+          .value
+          .trim();
+
 
       const email =
-        document.querySelector("#email")
-          .value.trim();
+        document
+          .querySelector("#email")
+          .value
+          .trim();
+
 
       const message =
-        document.querySelector("#message")
-          .value.trim();
+        document
+          .querySelector("#message")
+          .value
+          .trim();
 
 
       if (!name || !email || !message) {
@@ -42,9 +54,55 @@ export function initializeContact() {
 
 
       status.textContent =
-        "Message validated. Backend integration coming next.";
+        "Sending...";
 
-      form.reset();
+
+      try {
+
+        const response =
+          await fetch(
+            `${API_URL}/contact`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              body: JSON.stringify({
+                name,
+                email,
+                message
+              })
+            }
+          );
+
+
+        if (!response.ok) {
+          throw new Error(
+            "Request failed"
+          );
+        }
+
+
+        await response.json();
+
+
+        status.textContent =
+          "Message sent successfully.";
+
+        form.reset();
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+          "Unable to send message. Please try again.";
+
+      }
 
     }
   );
