@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from .ai import ai_service
 from .database import get_db
 from .models import ContactMessage
+from .schemas import ChatRequest
+from .schemas import ChatResponse
 from .schemas import ContactCreate
 from .schemas import ContactResponse
 
@@ -45,3 +47,20 @@ def create_contact(
     db.refresh(message)
 
     return message
+
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+)
+def chat(
+    payload: ChatRequest,
+):
+
+    response = ai_service.chat(
+        payload.message
+    )
+
+    return {
+        "response": response
+    }
