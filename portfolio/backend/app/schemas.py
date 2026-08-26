@@ -27,3 +27,13 @@ class ContactResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ChatRequest(BaseModel):
+
+    message: str
+
+
+class ChatResponse(BaseModel):
+
+    response: str
