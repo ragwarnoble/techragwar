@@ -1,6 +1,6 @@
 from datetime import datetime
-
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import EmailStr
 
 
@@ -16,17 +16,14 @@ class ContactCreate(BaseModel):
 class ContactResponse(BaseModel):
 
     id: int
-
     name: str
-
     email: str
-
     message: str
-
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class ChatRequest(BaseModel):
