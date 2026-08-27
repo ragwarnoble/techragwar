@@ -16,11 +16,15 @@ import {
   initializeContact
 } from "./contact.js";
 
+import {
+  initializeAIChat
+} from "./ai-chat.js";
 
 initializeNavigation();
 initializeTheme();
 initializeAnimations();
 initializeContact();
+initializeAIChat();
 
 
 // ========================================

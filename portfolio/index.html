@@ -23,13 +23,14 @@
     Ragwar<span>Tech</span>
   </a>
 
-  <nav id="nav">
-    <a href="#home">Home</a>
-    <a href="#about">About</a>
-    <a href="#skills">Skills</a>
-    <a href="#projects">Projects</a>
-    <a href="#contact">Contact</a>
-  </nav>
+ <nav id="nav">
+  <a href="#home">Home</a>
+  <a href="#about">About</a>
+  <a href="#skills">Skills</a>
+  <a href="#projects">Projects</a>
+  <a href="#ai">AI</a>
+  <a href="#contact">Contact</a>
+</nav>
 
   <div class="nav-actions">
 
@@ -82,6 +83,67 @@
       <a href="#projects" class="button primary">
         View Projects
       </a>
+
+<section id="ai" class="section section-alt">
+
+  <div class="section-heading">
+
+    <p class="eyebrow">
+      AI ASSISTANT
+    </p>
+
+    <h2>
+      Ask about my work.
+    </h2>
+
+  </div>
+
+
+  <div class="ai-chat">
+
+    <div
+      id="chatMessages"
+      class="chat-messages"
+      aria-live="polite"
+    >
+
+      <div class="chat-message assistant">
+        <span class="chat-label">
+          AI
+        </span>
+
+        <p>
+          Hi. Ask me about the projects,
+          technologies, architecture, or
+          AI systems in this portfolio.
+        </p>
+      </div>
+
+    </div>
+
+
+    <form id="chatForm" class="chat-form">
+
+      <input
+        id="chatInput"
+        type="text"
+        placeholder="Ask about this portfolio..."
+        autocomplete="off"
+        required
+      >
+
+      <button
+        type="submit"
+        class="button primary"
+      >
+        Ask
+      </button>
+
+    </form>
+
+  </div>
+
+</section>
 
       <a href="#contact" class="button secondary">
         Contact Me

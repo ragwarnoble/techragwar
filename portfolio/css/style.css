@@ -837,3 +837,101 @@ footer a:hover {
   }
 
 }
+
+
+/* ================================
+   AI CHAT
+================================ */
+
+.ai-chat {
+  max-width: 900px;
+
+  margin: auto;
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+
+  overflow: hidden;
+
+  background: var(--bg);
+}
+
+.chat-messages {
+  min-height: 300px;
+  max-height: 500px;
+
+  overflow-y: auto;
+
+  padding: 1.5rem;
+}
+
+.chat-message {
+  max-width: 80%;
+
+  margin-bottom: 1rem;
+
+  padding: 1rem;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.chat-message p {
+  color: var(--muted);
+
+  white-space: pre-wrap;
+}
+
+.chat-message.user {
+  margin-left: auto;
+
+  background: var(--surface);
+}
+
+.chat-message.assistant {
+  margin-right: auto;
+}
+
+.chat-label {
+  display: block;
+
+  margin-bottom: 0.4rem;
+
+  color: var(--muted);
+
+  font-family: monospace;
+
+  font-size: 0.7rem;
+
+  letter-spacing: 0.12em;
+}
+
+.chat-form {
+  display: flex;
+
+  gap: 0.75rem;
+
+  padding: 1rem;
+
+  border-top: 1px solid var(--border);
+}
+
+.chat-form input {
+  flex: 1;
+}
+
+@media (max-width: 600px) {
+
+  .chat-form {
+    flex-direction: column;
+  }
+
+  .chat-form .button {
+    width: 100%;
+  }
+
+  .chat-message {
+    max-width: 95%;
+  }
+
+}
