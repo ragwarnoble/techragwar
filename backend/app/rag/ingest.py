@@ -29,16 +29,67 @@ def load_markdown_documents() -> list[dict]:
     return documents
 
 
-def ingest() -> list[dict]:
-    """Return the current portfolio knowledge documents."""
+def chunk_document(document: dict) -> list[dict]:
+    """Split a Markdown document into deterministic sections."""
 
-    return load_markdown_documents()
+    lines = document["content"].splitlines()
+
+    chunks = []
+    current = []
+
+    for line in lines:
+        if line.startswith("## ") and current:
+            chunks.append(current)
+            current = []
+
+        current.append(line)
+
+    if current:
+        chunks.append(current)
+
+    results = []
+
+    for index, lines in enumerate(chunks):
+        content = "\n".join(lines).strip()
+
+        if not content:
+            continue
+
+        results.append(
+            {
+                "source": document["source"],
+                "content": content,
+                "chunk": index,
+            }
+        )
+
+    return results
+
+
+def load_chunks() -> list[dict]:
+    """Load and chunk all portfolio documents."""
+
+    chunks = []
+
+    for document in load_markdown_documents():
+        chunks.extend(chunk_document(document))
+
+    return chunks
+
+
+def ingest() -> list[dict]:
+    """Return the current portfolio knowledge chunks."""
+
+    return load_chunks()
 
 
 if __name__ == "__main__":
-    documents = ingest()
+    chunks = ingest()
 
-    print(f"Loaded {len(documents)} documents.")
+    print(f"Loaded {len(chunks)} chunks.")
 
-    for document in documents:
-        print(f"- {document['source']}")
+    for chunk in chunks:
+        print(
+            f"- {chunk['source']} "
+            f"(chunk={chunk['chunk']})"
+        )
