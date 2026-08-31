@@ -108,3 +108,53 @@ def test_retrieval_returns_chunk_metadata():
         assert "content" in result
         assert "chunk" in result
         assert "score" in result
+
+
+def test_retrieve_preserves_chunk_metadata():
+    results = retrieve("AI RAG")
+
+    assert results
+
+    for result in results:
+        assert "source" in result
+        assert "content" in result
+        assert "chunk" in result
+        assert "score" in result
+
+
+def test_retrieve_ai_rag_returns_relevant_chunks():
+    results = retrieve(
+        "How does the portfolio AI/RAG system work?"
+    )
+
+    assert results
+
+    sources = {result["source"] for result in results}
+
+    assert (
+        "projects.md" in sources
+        or "architecture.md" in sources
+    )
+
+
+def test_retrieve_engineering_goals_returns_engineering_content():
+    results = retrieve("What are the engineering goals?")
+
+    assert results
+
+    top = results[0]
+
+    assert top["source"] in {
+        "about.md",
+        "skills.md",
+    }
+
+    assert "Engineering" in top["content"]
+
+
+def test_retrieve_unknown_question_returns_no_results():
+    results = retrieve(
+        "What is the capital of France?"
+    )
+
+    assert results == []
