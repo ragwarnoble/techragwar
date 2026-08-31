@@ -1,8 +1,7 @@
 import re
-from pathlib import Path
 
+from .ingest import load_markdown_documents
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "portfolio"
 
 STOP_WORDS = {
     "the",
@@ -39,24 +38,18 @@ def tokenize(text: str) -> set[str]:
 
 
 def load_documents() -> list[dict]:
-    documents = []
+    """Load documents through the RAG ingestion layer."""
 
-    if not DATA_DIR.exists():
-        return documents
-
-    for path in DATA_DIR.glob("*.md"):
-        documents.append(
-            {
-                "source": path.name,
-                "content": path.read_text(encoding="utf-8"),
-            }
-        )
-
-    return documents
+    return load_markdown_documents()
 
 
 def retrieve(query: str, limit: int = 3) -> list[dict]:
+    """Retrieve portfolio documents using deterministic keyword matching."""
+
     query_words = tokenize(query)
+
+    if not query_words or limit <= 0:
+        return []
 
     results = []
 
@@ -75,8 +68,10 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
             )
 
     results.sort(
-        key=lambda item: item["score"],
-        reverse=True,
+        key=lambda item: (
+            -item["score"],
+            item["source"],
+        )
     )
 
     return results[:limit]
