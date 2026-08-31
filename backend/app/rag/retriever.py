@@ -1,6 +1,6 @@
 import re
 
-from .ingest import load_markdown_documents
+from .ingest import load_chunks
 
 
 STOP_WORDS = {
@@ -37,14 +37,8 @@ def tokenize(text: str) -> set[str]:
     }
 
 
-def load_documents() -> list[dict]:
-    """Load documents through the RAG ingestion layer."""
-
-    return load_markdown_documents()
-
-
 def retrieve(query: str, limit: int = 3) -> list[dict]:
-    """Retrieve portfolio documents using deterministic keyword matching."""
+    """Retrieve portfolio chunks using deterministic keyword matching."""
 
     query_words = tokenize(query)
 
@@ -53,16 +47,17 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
 
     results = []
 
-    for document in load_documents():
-        document_words = tokenize(document["content"])
+    for chunk in load_chunks():
+        chunk_words = tokenize(chunk["content"])
 
-        score = len(query_words & document_words)
+        score = len(query_words & chunk_words)
 
         if score > 0:
             results.append(
                 {
-                    "source": document["source"],
-                    "content": document["content"],
+                    "source": chunk["source"],
+                    "content": chunk["content"],
+                    "chunk": chunk["chunk"],
                     "score": score,
                 }
             )
@@ -71,6 +66,7 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
         key=lambda item: (
             -item["score"],
             item["source"],
+            item["chunk"],
         )
     )
 
