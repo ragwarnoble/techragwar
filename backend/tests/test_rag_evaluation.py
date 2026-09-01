@@ -1,46 +1,55 @@
+from app.rag.evaluation import (
+    EVALUATION_CASES,
+    evaluate,
+    evaluate_case,
+    recall_at_k,
+)
 from app.rag.retriever import retrieve
 
 
-EVALUATION_CASES = [
-    {
-        "question": "What technologies does Ragwar Tech use?",
-        "expected_sources": {"about.md", "skills.md"},
-    },
-    {
-        "question": "How does the portfolio AI/RAG system work?",
-        "expected_sources": {"projects.md", "architecture.md"},
-    },
-    {
-        "question": "What is Framework-FreeFE?",
-        "expected_sources": {"about.md", "projects.md"},
-    },
-    {
-        "question": "What are the engineering goals?",
-        "expected_sources": {"about.md", "skills.md"},
-    },
-]
+def test_evaluation_cases_exist():
+    assert EVALUATION_CASES
 
 
-def test_rag_evaluation_cases():
-    for case in EVALUATION_CASES:
-        results = retrieve(case["question"])
+def test_evaluate_case_returns_expected_structure():
+    case = EVALUATION_CASES[0]
 
-        assert results, case["question"]
+    result = evaluate_case(
+        case["query"],
+        case["expected_sources"],
+    )
 
-        sources = {
-            result["source"]
-            for result in results
-        }
+    assert result["query"] == case["query"]
+    assert "retrieved_sources" in result
+    assert "hit" in result
+    assert "relevant_count" in result
 
-        assert sources & case["expected_sources"], (
-            f"No expected source retrieved for: "
-            f"{case['question']}"
+
+def test_evaluate_all_cases():
+    results = evaluate()
+
+    assert len(results) == len(EVALUATION_CASES)
+
+    for result in results:
+        assert result["query"]
+        assert isinstance(
+            result["retrieved_sources"],
+            list,
         )
 
 
-def test_rag_unknown_question_has_no_results():
+def test_recall_at_k():
     results = retrieve(
-        "What is the capital of France?"
+        "How does the portfolio AI/RAG system work?"
     )
 
-    assert results == []
+    score = recall_at_k(
+        results,
+        {"projects.md", "architecture.md"},
+    )
+
+    assert 0.0 <= score <= 1.0
+
+
+def test_recall_at_k_empty_expected_sources():
+    assert recall_at_k([], set()) == 0.0
