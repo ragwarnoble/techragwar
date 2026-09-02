@@ -8,8 +8,8 @@ The frontend communicates with backend services through HTTP APIs.
 The FastAPI backend exposes application endpoints and delegates AI
 requests to the AI service.
 
-The AI service retrieves relevant portfolio knowledge before sending
-context to the language model.
+The AI service obtains information by retrieving relevant portfolio
+knowledge before sending context to the language model.
 
 The RAG layer is responsible for portfolio document retrieval and
 context preparation.

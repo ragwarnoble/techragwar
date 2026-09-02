@@ -119,3 +119,86 @@ def mean_reciprocal_rank(
         )
 
     return sum(scores) / len(scores)
+
+def precision_at_k(
+    results: list[dict],
+    expected_sources: set[str],
+) -> float:
+    if not results:
+        return 0.0
+
+    relevant = sum(
+        1
+        for result in results
+        if result["source"] in expected_sources
+    )
+
+    return relevant / len(results)
+
+
+def unique_source_count(results: list[dict]) -> int:
+    return len({
+        result["source"]
+        for result in results
+    })
+
+
+def duplicate_source_count(results: list[dict]) -> int:
+    return len(results) - unique_source_count(results)
+
+if __name__ == "__main__":
+    results = evaluate()
+
+    print("RAG RETRIEVAL EVALUATION")
+    print("=" * 60)
+
+    reciprocal_ranks = []
+
+    for result in results:
+        query = result["query"]
+        expected = result["expected_sources"]
+
+        retrieved = retrieve(query, limit=3)
+
+        recall = recall_at_k(
+            retrieved,
+            expected,
+        )
+
+        precision = precision_at_k(
+            retrieved,
+            expected,
+        )
+
+        rr = reciprocal_rank(
+            retrieved,
+            expected,
+        )
+
+        reciprocal_ranks.append(rr)
+
+        print(f"\nQUESTION: {query}")
+        print(f"Expected:  {sorted(expected)}")
+        print(f"Retrieved: {[r['source'] for r in retrieved]}")
+        print(f"Recall@3:  {recall:.3f}")
+        print(f"Precision@3: {precision:.3f}")
+        print(f"RR:        {rr:.3f}")
+
+    hit_rate = (
+        sum(result["hit"] for result in results) / len(results)
+        if results
+        else 0.0
+    )
+
+    mrr = (
+        sum(reciprocal_ranks) / len(reciprocal_ranks)
+        if reciprocal_ranks
+        else 0.0
+    )
+
+    print("\n" + "=" * 60)
+    print(f"Cases:       {len(results)}")
+    print(f"Hit Rate:    {hit_rate:.3f}")
+    print(f"MRR:         {mrr:.3f}")
+    print(f"Unique sources: " f"{unique_source_count(retrieved)}")
+    print(f"Duplicate sources: " f"{duplicate_source_count(retrieved)}")

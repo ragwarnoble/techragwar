@@ -3,6 +3,8 @@ from app.rag.evaluation import (
     evaluate,
     evaluate_case,
     recall_at_k,
+    unique_source_count,
+    duplicate_source_count,
 )
 from app.rag.retriever import retrieve
 
@@ -53,3 +55,23 @@ def test_recall_at_k():
 
 def test_recall_at_k_empty_expected_sources():
     assert recall_at_k([], set()) == 0.0
+
+
+def test_unique_source_count():
+    results = [
+        {"source": "about.md"},
+        {"source": "about.md"},
+        {"source": "architecture.md"},
+    ]
+
+    assert unique_source_count(results) == 2
+
+
+def test_duplicate_source_count():
+    results = [
+        {"source": "about.md"},
+        {"source": "about.md"},
+        {"source": "architecture.md"},
+    ]
+
+    assert duplicate_source_count(results) == 1

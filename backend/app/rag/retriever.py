@@ -1,5 +1,4 @@
 import re
-from collections import Counter
 
 from .ingest import load_chunks
 
@@ -25,6 +24,10 @@ STOP_WORDS = {
     "about",
     "tell",
     "me",
+    "ragwar",
+    "tech",
+    "software",
+    "portfolio",
 }
 
 
@@ -54,23 +57,19 @@ def _score_chunk(query: str, chunk: dict) -> int:
     if not query_words:
         return 0
 
-    content = chunk["content"]
-    content_words = re.findall(
-        r"[a-zA-Z0-9]+",
-        content.lower(),
-    )
+    content_words = tokenize(chunk["content"])
 
-    word_counts = Counter(content_words)
+    matched_words = query_words & content_words
 
-    score = 0
+    # Base score: unique query-term matches.
+    score = len(matched_words)
 
-    for word in query_words:
-        if word in word_counts:
-            score += 1
-            score += min(word_counts[word] - 1, 2)
+    # Reward chunks that cover multiple query concepts.
+    if len(matched_words) >= 2:
+        score += 2
 
-    heading_words = tokenize(_heading_text(content))
-
+    # Heading matches indicate stronger topical relevance.
+    heading_words = tokenize(_heading_text(chunk["content"]))
     score += 3 * len(query_words & heading_words)
 
     normalized_query = " ".join(
@@ -78,14 +77,13 @@ def _score_chunk(query: str, chunk: dict) -> int:
     )
 
     normalized_content = " ".join(
-        re.findall(r"[a-zA-Z0-9]+", content.lower())
+        re.findall(r"[a-zA-Z0-9]+", chunk["content"].lower())
     )
 
     if normalized_query and normalized_query in normalized_content:
         score += 5
 
     return score
-
 
 def retrieve(
     query: str,
