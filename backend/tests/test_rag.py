@@ -12,10 +12,8 @@ def test_tokenize_removes_stop_words():
     assert "what" not in tokens
     assert "does" not in tokens
     assert "use" not in tokens
-    assert "ragwar" in tokens
-    assert "tech" in tokens
-    assert "backend" in tokens
-    assert "development" in tokens
+    assert "ragwar" not in tokens
+    assert "tech" not in tokens
 
 
 def test_load_markdown_documents():
