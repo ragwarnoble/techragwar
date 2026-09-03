@@ -16,6 +16,22 @@ def test_tokenize_removes_stop_words():
     assert "tech" not in tokens
 
 
+def test_tokenize_normalizes_server_side():
+    tokens = tokenize("server-side development")
+
+    assert "backend" in tokens
+    assert "server" not in tokens
+    assert "side" not in tokens
+
+
+def test_tokenize_normalizes_server_side_without_hyphen():
+    tokens = tokenize("server side development")
+
+    assert "backend" in tokens
+    assert "server" not in tokens
+    assert "side" not in tokens
+
+
 def test_load_markdown_documents():
     documents = load_markdown_documents()
 
