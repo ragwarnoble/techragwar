@@ -60,6 +60,7 @@ QUERY_EXPANSIONS = {
 # Minimum absolute score required for retrieval.
 MIN_RETRIEVAL_SCORE = 4
 
+
 # A result must reach at least this proportion
 # of the strongest result to be considered relevant.
 MIN_RELEVANCE_RATIO = 0.5
@@ -191,31 +192,30 @@ def _score_chunk(
             score += 8
 
     # ---------------------------------------------------------
-    # 5. Reward matching terms appearing near each other
+    # 5. Reward matching terms appearing in the same sentence
     # ---------------------------------------------------------
-    words = tokenize(content)
+    sentences = re.split(
+        r"[.!?]+",
+        content,
+    )
 
-    positions = {
-        word: index
-        for index, word in enumerate(words)
-        if word in query_words
-    }
-
-    if len(positions) >= 2:
-        indexes = sorted(
-            positions.values()
+    for sentence in sentences:
+        sentence_words = set(
+            tokenize(sentence)
         )
 
-        distance = (
-            indexes[-1]
-            - indexes[0]
+        sentence_matches = (
+            query_words & sentence_words
         )
 
-        if distance <= 5:
+        if len(sentence_matches) >= 2:
             score += 3
 
-        elif distance <= 10:
-            score += 1
+        if len(sentence_matches) >= 3:
+            score += 2
+
+        if len(sentence_matches) >= 4:
+            score += 2
 
     return score
 
@@ -262,12 +262,9 @@ def retrieve(
         )
     )
 
-    # ---------------------------------------------------------
-    # Relative relevance filtering
-    #
-    # limit is now a maximum number of results, not a
-    # requirement to return weakly related documents.
-    # ---------------------------------------------------------
+    # Relative relevance filtering:
+    # limit is max number of results, not a requirement
+    # to return weakly related documents.
     if results:
         best_score = results[0]["score"]
 
@@ -283,26 +280,18 @@ def retrieve(
             >= relevance_threshold
         ]
 
-    # ---------------------------------------------------------
     # Prefer distinct sources.
-    # ---------------------------------------------------------
     selected = []
     seen_sources = set()
 
     for result in results:
-
         if result["source"] in seen_sources:
             continue
 
         selected.append(result)
-
-        seen_sources.add(
-            result["source"]
-        )
+        seen_sources.add(result["source"])
 
         if len(selected) >= limit:
             break
 
     return selected
-
-   

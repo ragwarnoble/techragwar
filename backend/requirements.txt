@@ -7,3 +7,4 @@ email-validator
 google-genai
 httpx
 pytest
+pytest-cov

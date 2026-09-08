@@ -2,14 +2,134 @@ from .retriever import retrieve
 
 
 EVALUATION_CASES = [
+    # ---------------------------------------------------------
+    # Direct factual
+    # ---------------------------------------------------------
+
     {
-        "query": "What tools are used for server-side development?",
+        "query": "What programming language is used?",
+        "expected_sources": {"about.md", "skills.md"},
+    },
+    {
+        "query": "What backend framework is used?",
+        "expected_sources": {"about.md", "skills.md"},
+    },
+    {
+        "query": "What frontend technologies are used?",
         "expected_sources": {
+            "about.md",
+            "projects.md",
             "skills.md",
         },
     },
     {
-        "query": "What technologies are used to build the frontend?",
+        "query": "What database technology is listed?",
+        "expected_sources": {"about.md", "skills.md"},
+    },
+
+    # ---------------------------------------------------------
+    # Architecture
+    # ---------------------------------------------------------
+
+    {
+        "query": "How is the system architecture separated?",
+        "expected_sources": {"architecture.md"},
+    },
+    {
+        "query": "How does the frontend communicate with the backend?",
+        "expected_sources": {"architecture.md"},
+    },
+    {
+        "query": "How does the AI service obtain information?",
+        "expected_sources": {"architecture.md"},
+    },
+
+    # ---------------------------------------------------------
+    # Projects
+    # ---------------------------------------------------------
+
+    {
+        "query": "What is Framework-FreeFE?",
+        "expected_sources": {
+            "about.md",
+            "projects.md",
+        },
+    },
+    {
+        "query": "What is Portfolio AI/RAG?",
+        "expected_sources": {"projects.md"},
+    },
+    {
+        "query": "What does the Agentic Systems project explore?",
+        "expected_sources": {"projects.md"},
+    },
+
+    # ---------------------------------------------------------
+    # Technologies / skills
+    # ---------------------------------------------------------
+
+    {
+        "query": "What backend skills are listed?",
+        "expected_sources": {"skills.md"},
+    },
+    {
+        "query": "What frontend skills are listed?",
+        "expected_sources": {"skills.md"},
+    },
+    {
+        "query": "What AI skills are listed?",
+        "expected_sources": {"skills.md"},
+    },
+
+    # ---------------------------------------------------------
+    # Cross-document
+    # ---------------------------------------------------------
+
+    {
+        "query": "What technologies are used to build Framework-FreeFE?",
+        "expected_sources": {
+            "about.md",
+            "projects.md",
+            "skills.md",
+        },
+    },
+    {
+        "query": "How are RAG and AI integrated into the portfolio?",
+        "expected_sources": {
+            "about.md",
+            "architecture.md",
+            "projects.md",
+            "skills.md",
+        },
+    },
+    {
+        "query": "What engineering principles guide the architecture?",
+        "expected_sources": {
+            "about.md",
+            "architecture.md",
+            "skills.md",
+        },
+    },
+
+    # ---------------------------------------------------------
+    # Unknown / out-of-scope
+    # ---------------------------------------------------------
+
+    {
+        "query": "What is the weather today?",
+        "expected_sources": {},
+    },
+    {
+        "query": "Who is the president of the United States?",
+        "expected_sources": {},
+    },
+
+    # ---------------------------------------------------------
+    # Ambiguous
+    # ---------------------------------------------------------
+
+    {
+        "query": "What APIs are used?",
         "expected_sources": {
             "about.md",
             "skills.md",
@@ -17,16 +137,11 @@ EVALUATION_CASES = [
         },
     },
     {
-        "query": "How does the AI system obtain information?",
+        "query": "What kind of software does Ragwar Tech build?",
         "expected_sources": {
+            "about.md",
             "architecture.md",
             "projects.md",
-        },
-    },
-    {
-        "query": "What kind of software architecture does Ragwar Tech prefer?",
-        "expected_sources": {
-            "architecture.md",
         },
     },
 ]
@@ -157,6 +272,33 @@ def mean_reciprocal_rank(
                 case["expected_sources"],
             )
         )
+
+    return sum(scores) / len(scores)
+
+
+def mean_reciprocal_rank_results(
+    results: list[dict],
+) -> float:
+    if not results:
+        return 0.0
+
+    scores = []
+
+    for result in results:
+        retrieved_sources = result["retrieved_sources"]
+        expected_sources = result["expected_sources"]
+
+        reciprocal = 0.0
+
+        for position, source in enumerate(
+            retrieved_sources,
+            start=1,
+        ):
+            if source in expected_sources:
+                reciprocal = 1.0 / position
+                break
+
+        scores.append(reciprocal)
 
     return sum(scores) / len(scores)
 

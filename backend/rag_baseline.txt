@@ -1,0 +1,148 @@
+SOURCE-LEVEL RAG EVALUATION
+======================================================================
+
+QUESTION: What programming language is used?
+Expected:     ['about.md', 'skills.md']
+Retrieved:    []
+Recall@3:     0.000
+Precision@3:  0.000
+RR:           0.000
+
+QUESTION: What backend framework is used?
+Expected:     ['about.md', 'skills.md']
+Retrieved:    ['about.md', 'projects.md', 'skills.md']
+Recall@3:     1.000
+Precision@3:  0.667
+RR:           1.000
+
+QUESTION: What frontend technologies are used?
+Expected:     ['about.md', 'projects.md', 'skills.md']
+Retrieved:    ['skills.md']
+Recall@3:     0.333
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What database technology is listed?
+Expected:     ['about.md', 'skills.md']
+Retrieved:    []
+Recall@3:     0.000
+Precision@3:  0.000
+RR:           0.000
+
+QUESTION: How is the system architecture separated?
+Expected:     ['architecture.md']
+Retrieved:    ['architecture.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: How does the frontend communicate with the backend?
+Expected:     ['architecture.md']
+Retrieved:    ['architecture.md', 'skills.md', 'about.md']
+Recall@3:     1.000
+Precision@3:  0.333
+RR:           1.000
+
+QUESTION: How does the AI service obtain information?
+Expected:     ['architecture.md']
+Retrieved:    ['architecture.md', 'projects.md']
+Recall@3:     1.000
+Precision@3:  0.500
+RR:           1.000
+
+QUESTION: What is Framework-FreeFE?
+Expected:     ['about.md', 'projects.md']
+Retrieved:    ['about.md', 'projects.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What is Portfolio AI/RAG?
+Expected:     ['projects.md']
+Retrieved:    ['projects.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What does the Agentic Systems project explore?
+Expected:     ['projects.md']
+Retrieved:    ['projects.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What backend skills are listed?
+Expected:     ['skills.md']
+Retrieved:    ['skills.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What frontend skills are listed?
+Expected:     ['skills.md']
+Retrieved:    ['skills.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What AI skills are listed?
+Expected:     ['skills.md']
+Retrieved:    ['skills.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What technologies are used to build Framework-FreeFE?
+Expected:     ['about.md', 'projects.md', 'skills.md']
+Retrieved:    ['about.md', 'projects.md']
+Recall@3:     0.667
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: How are RAG and AI integrated into the portfolio?
+Expected:     ['about.md', 'architecture.md', 'projects.md', 'skills.md']
+Retrieved:    ['projects.md']
+Recall@3:     0.250
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What engineering principles guide the architecture?
+Expected:     ['about.md', 'architecture.md', 'skills.md']
+Retrieved:    ['skills.md', 'about.md', 'architecture.md']
+Recall@3:     1.000
+Precision@3:  1.000
+RR:           1.000
+
+QUESTION: What is the weather today?
+Expected:     []
+Retrieved:    []
+Recall@3:     0.000
+Precision@3:  0.000
+RR:           0.000
+
+QUESTION: Who is the president of the United States?
+Expected:     []
+Retrieved:    []
+Recall@3:     0.000
+Precision@3:  0.000
+RR:           0.000
+
+QUESTION: What APIs are used?
+Expected:     ['about.md', 'projects.md', 'skills.md']
+Retrieved:    ['about.md', 'architecture.md', 'projects.md']
+Recall@3:     0.667
+Precision@3:  0.667
+RR:           1.000
+
+QUESTION: What kind of software does Ragwar Tech build?
+Expected:     ['about.md', 'architecture.md', 'projects.md']
+Retrieved:    ['about.md', 'projects.md']
+Recall@3:     0.667
+Precision@3:  1.000
+RR:           1.000
+
+======================================================================
+Cases:             20
+Hit Rate:          0.800
+MRR:               0.800
+Duplicate sources: 0

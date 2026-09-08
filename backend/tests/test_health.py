@@ -6,6 +6,83 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_health():
+
+    response = client.get(
+        "/api/health"
+    )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "status": "ok",
+        "service": "framework-freefe-api",
+    }
+
+
+def test_create_contact():
+
+    response = client.post(
+        "/api/contact",
+        json={
+            "name": "Test User",
+            "email": "test@example.com",
+            "message": "This is a test message.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["name"] == "Test User"
+    assert data["email"] == "test@example.com"
+    assert data["message"] == "This is a test message."
+    assert isinstance(data["id"], int)
+    assert data["id"] > 0
+    assert "created_at" in data
+
+
+def test_create_contact_requires_name():
+
+    response = client.post(
+        "/api/contact",
+        json={
+            "email": "test@example.com",
+            "message": "Missing name.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_contact_requires_email():
+
+    response = client.post(
+        "/api/contact",
+        json={
+            "name": "Test User",
+            "message": "Missing email.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_contact_rejects_invalid_email():
+
+    response = client.post(
+        "/api/contact",
+        json={
+            "name": "Test User",
+            "email": "not-an-email",
+            "message": "Invalid email.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_chat(monkeypatch):
 
     monkeypatch.setattr(
@@ -95,3 +172,37 @@ def test_chat_rejects_invalid_message_type():
     )
 
     assert response.status_code == 422
+
+
+def test_chat_passes_message_to_ai_service(monkeypatch):
+
+    received = {}
+
+    def fake_chat(message):
+        received["message"] = message
+
+        return {
+            "response": "Test response",
+            "sources": [],
+        }
+
+    monkeypatch.setattr(
+        "app.routes.ai_service.chat",
+        fake_chat,
+    )
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "message": "Test message",
+        },
+    )
+
+    assert response.status_code == 200
+    assert received["message"] == "Test message"
+
+    assert response.json() == {
+        "response": "Test response",
+        "sources": [],
+    }
+
