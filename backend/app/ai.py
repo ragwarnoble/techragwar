@@ -1,17 +1,19 @@
-from openai import OpenAI
+from google import genai
 
 from .config import settings
+from .rag.context import build_context
 from .rag.prompts import RAG_SYSTEM_PROMPT
 from .rag.retriever import retrieve
 
 
 class AIService:
+
     def __init__(self):
-        self.api_key = settings.ai_api_key
+        self.api_key = settings.google_api_key
         self.model = settings.ai_model
 
         self.client = (
-            OpenAI(api_key=self.api_key)
+            genai.Client(api_key=self.api_key)
             if self.api_key
             else None
         )
@@ -21,16 +23,23 @@ class AIService:
         message: str,
         documents: list[dict],
     ) -> str:
+
         if not documents:
             return (
-                "I don't have that information in the "
-                "Ragwar Tech portfolio knowledge base."
+                "That information is not available in the "
+                "portfolio knowledge base."
             )
 
-        context = "\n\n".join(
-            document["content"]
-            for document in documents
+        context = build_context(
+            message,
+            results=documents,
         )
+
+        if not context:
+            return (
+                "That information is not available in the "
+                "portfolio knowledge base."
+            )
 
         return (
             "AI service is currently unavailable. "
@@ -38,23 +47,46 @@ class AIService:
             f"{context}"
         )
 
-    def chat(self, message: str) -> str:
+    def chat(self, message: str) -> dict:
+
         documents = retrieve(message)
 
-        if not self.client:
-            return self._fallback_response(message, documents)
-
-        context = "\n\n".join(
-            f"Source: {document['source']}\n"
-            f"{document['content']}"
+        sources = [
+            document["source"]
             for document in documents
+        ]
+
+        if not documents:
+            return {
+                "response": (
+                    "That information is not available in the "
+                    "portfolio knowledge base."
+                ),
+                "sources": [],
+            }
+
+        context = build_context(
+            message,
+            results=documents,
         )
 
         if not context:
-            context = (
-                "No relevant information was found in the "
-                "portfolio knowledge base."
-            )
+            return {
+                "response": (
+                    "That information is not available in the "
+                    "portfolio knowledge base."
+                ),
+                "sources": [],
+            }
+
+        if not self.client:
+            return {
+                "response": self._fallback_response(
+                    message,
+                    documents,
+                ),
+                "sources": sources,
+            }
 
         prompt = f"""
 Portfolio context:
@@ -67,16 +99,34 @@ User question:
 """
 
         try:
-            response = self.client.responses.create(
+
+            response = self.client.models.generate_content(
                 model=self.model,
-                instructions=RAG_SYSTEM_PROMPT,
-                input=prompt,
+                contents=(
+                    f"{RAG_SYSTEM_PROMPT}\n\n"
+                    f"{prompt}"
+                ),
             )
 
-            return response.output_text
+            return {
+                "response": response.text,
+                "sources": sources,
+            }
 
-        except Exception:
-            return self._fallback_response(message, documents)
+        except Exception as exc:
+            print(
+                f"Gemini API error: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+            return {
+                "response": self._fallback_response(
+                    message,
+                    documents,
+                ),
+                "sources": sources,
+            }
 
 
 ai_service = AIService()
+

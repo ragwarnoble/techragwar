@@ -1,6 +1,8 @@
 const API_URL =
-  "http://localhost:8000/api";
-
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000/api"
+    : "https://improved-umbrella-6v45gw54jgpr3x56r-8000.app.github.dev/api";
 
 export function initializeAIChat() {
 
@@ -46,6 +48,16 @@ export function initializeAIChat() {
       input.disabled = true;
 
 
+      const submitButton =
+        form.querySelector("button");
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent =
+          "Thinking...";
+      }
+
+
       const loading =
         addMessage(
           "assistant",
@@ -74,9 +86,11 @@ export function initializeAIChat() {
 
 
         if (!response.ok) {
+
           throw new Error(
-            "AI request failed"
+            `AI request failed: ${response.status}`
           );
+
         }
 
 
@@ -89,13 +103,18 @@ export function initializeAIChat() {
 
         addMessage(
           "assistant",
-          data.response
+          data.response,
+          data.sources || []
         );
 
 
       } catch (error) {
 
-        console.error(error);
+        console.error(
+          "AI chat error:",
+          error
+        );
+
 
         loading.remove();
 
@@ -105,9 +124,21 @@ export function initializeAIChat() {
           "Sorry, the AI service is currently unavailable."
         );
 
+
       } finally {
 
         input.disabled = false;
+
+
+        if (submitButton) {
+
+          submitButton.disabled = false;
+
+          submitButton.textContent =
+            "Ask";
+
+        }
+
 
         input.focus();
 
@@ -119,7 +150,8 @@ export function initializeAIChat() {
 
   function addMessage(
     role,
-    text
+    text,
+    sources = []
   ) {
 
     const message =
@@ -133,8 +165,10 @@ export function initializeAIChat() {
     const label =
       document.createElement("span");
 
+
     label.className =
       "chat-label";
+
 
     label.textContent =
       role === "user"
@@ -145,6 +179,7 @@ export function initializeAIChat() {
     const paragraph =
       document.createElement("p");
 
+
     paragraph.textContent =
       text;
 
@@ -153,6 +188,160 @@ export function initializeAIChat() {
       label,
       paragraph
     );
+
+
+    // ========================================
+    // ASSISTANT ACTIONS
+    // ========================================
+
+    if (role === "assistant") {
+
+      const actions =
+        document.createElement("div");
+
+
+      actions.className =
+        "chat-actions";
+
+
+      const copyButton =
+        document.createElement("button");
+
+
+      copyButton.type =
+        "button";
+
+
+      copyButton.className =
+        "chat-copy";
+
+
+      copyButton.textContent =
+        "Copy";
+
+
+      copyButton.addEventListener(
+        "click",
+        async () => {
+
+          try {
+
+            await navigator.clipboard.writeText(
+              text
+            );
+
+
+            copyButton.textContent =
+              "Copied!";
+
+
+            setTimeout(() => {
+
+              copyButton.textContent =
+                "Copy";
+
+            }, 1500);
+
+
+          } catch (error) {
+
+            console.error(
+              "Copy failed:",
+              error
+            );
+
+
+            copyButton.textContent =
+              "Copy failed";
+
+
+            setTimeout(() => {
+
+              copyButton.textContent =
+                "Copy";
+
+            }, 1500);
+
+          }
+
+        }
+      );
+
+
+      actions.append(
+        copyButton
+      );
+
+
+      message.append(
+        actions
+      );
+
+    }
+
+
+    // ========================================
+    // SOURCES
+    // ========================================
+
+    if (
+      role === "assistant" &&
+      sources.length > 0
+    ) {
+
+      const sourceContainer =
+        document.createElement("div");
+
+
+      sourceContainer.className =
+        "chat-sources";
+
+
+      const sourceLabel =
+        document.createElement("span");
+
+
+      sourceLabel.className =
+        "chat-source-label";
+
+
+      sourceLabel.textContent =
+        "Sources:";
+
+
+      sourceContainer.append(
+        sourceLabel
+      );
+
+
+      sources.forEach(
+        source => {
+
+          const sourceItem =
+            document.createElement("span");
+
+
+          sourceItem.className =
+            "chat-source";
+
+
+          sourceItem.textContent =
+            source;
+
+
+          sourceContainer.append(
+            sourceItem
+          );
+
+        }
+      );
+
+
+      message.append(
+        sourceContainer
+      );
+
+    }
 
 
     messages.appendChild(
@@ -169,4 +358,3 @@ export function initializeAIChat() {
   }
 
 }
-

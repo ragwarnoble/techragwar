@@ -20,11 +20,11 @@ class Settings(BaseSettings):
 
     cors_origins: str = "*"
 
-    ai_provider: str = "openai"
+    ai_provider: str = "google"
 
-    ai_model: str = "gpt-4o-mini"
+    ai_model: str = "gemini-3.6-flash"
 
-    ai_api_key: str = ""
+    google_api_key: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

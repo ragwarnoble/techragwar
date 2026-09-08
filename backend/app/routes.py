@@ -2,13 +2,15 @@ from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from .ai import ai_service
 from .database import get_db
+from .ai import ai_service
 from .models import ContactMessage
-from .schemas import ChatRequest
-from .schemas import ChatResponse
-from .schemas import ContactCreate
-from .schemas import ContactResponse
+from .schemas import (
+    ChatRequest,
+    ChatResponse,
+    ContactCreate,
+    ContactResponse,
+)
 
 
 router = APIRouter(
@@ -56,11 +58,6 @@ def create_contact(
 def chat(
     payload: ChatRequest,
 ):
-
-    response = ai_service.chat(
+    return ai_service.chat(
         payload.message
     )
-
-    return {
-        "response": response
-    }

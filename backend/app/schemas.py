@@ -1,20 +1,18 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import EmailStr
+from pydantic import Field
 
 
 class ContactCreate(BaseModel):
-
     name: str
-
     email: EmailStr
-
     message: str
 
 
 class ContactResponse(BaseModel):
-
     id: int
     name: str
     email: str
@@ -27,10 +25,12 @@ class ContactResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-
     message: str
 
 
 class ChatResponse(BaseModel):
-
     response: str
+    sources: list[str] = Field(
+        default_factory=list
+    )
+

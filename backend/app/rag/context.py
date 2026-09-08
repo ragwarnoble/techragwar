@@ -9,6 +9,7 @@ def build_context(
     query: str,
     limit: int = DEFAULT_LIMIT,
     max_chars: int = DEFAULT_MAX_CHARS,
+    results: list[dict] | None = None,
 ) -> str:
     """
     Build deterministic LLM context from retrieved portfolio chunks.
@@ -17,7 +18,11 @@ def build_context(
     if limit <= 0 or max_chars <= 0:
         return ""
 
-    results = retrieve(query, limit=limit)
+    if results is None:
+        results = retrieve(
+            query,
+            limit=limit,
+        )
 
     if not results:
         return ""
@@ -25,7 +30,7 @@ def build_context(
     sections = []
     total_chars = 0
 
-    for result in results:
+    for result in results[:limit]:
         source = result["source"]
         chunk = result["chunk"]
         content = result["content"]
@@ -38,6 +43,7 @@ def build_context(
         separator = "\n\n"
 
         additional_chars = len(section)
+
         if sections:
             additional_chars += len(separator)
 
@@ -62,5 +68,4 @@ def build_context(
         if total_chars >= max_chars:
             break
 
-    return "\n\n".join(sections)				
-
+    return "\n\n".join(sections)

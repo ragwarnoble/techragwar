@@ -935,3 +935,41 @@ footer a:hover {
   }
 
 }
+
+.chat-actions {
+  margin-top: 0.75rem;
+}
+
+.chat-copy {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.chat-copy:hover {
+  opacity: 0.7;
+}
+
+.chat-copy:disabled {
+  cursor: default;
+}
+
+.chat-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.chat-source-label {
+  font-weight: 600;
+}
+
+.chat-source {
+  opacity: 0.75;
+}

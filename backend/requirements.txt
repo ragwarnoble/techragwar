@@ -4,6 +4,6 @@ pydantic
 pydantic-settings
 SQLAlchemy
 email-validator
-openai
+google-genai
 httpx
 pytest

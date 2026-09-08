@@ -44,7 +44,11 @@ STOP_WORDS = {
     "type",
     "prefer",
     "system",
+    "development",
+    "programming",
+    "language",
 }
+
 
 QUERY_EXPANSIONS = {
     "server-side": "backend",
@@ -53,11 +57,22 @@ QUERY_EXPANSIONS = {
 }
 
 
+# Minimum absolute score required for retrieval.
+MIN_RETRIEVAL_SCORE = 4
+
+# A result must reach at least this proportion
+# of the strongest result to be considered relevant.
+MIN_RELEVANCE_RATIO = 0.5
+
+
 def normalize(text: str) -> str:
     normalized = text.lower()
 
     for phrase, replacement in QUERY_EXPANSIONS.items():
-        normalized = normalized.replace(phrase, replacement)
+        normalized = normalized.replace(
+            phrase,
+            replacement,
+        )
 
     return normalized
 
@@ -73,7 +88,8 @@ def tokenize(text: str) -> list[str]:
     return [
         word
         for word in words
-        if len(word) > 2 and word not in STOP_WORDS
+        if len(word) > 2
+        and word not in STOP_WORDS
     ]
 
 
@@ -85,16 +101,29 @@ def _heading_text(content: str) -> str:
     )
 
 
-def _score_chunk(query: str, chunk: dict) -> int:
-    query_words = set(tokenize(query))
+def _score_chunk(
+    query: str,
+    chunk: dict,
+) -> int:
+
+    query_words = set(
+        tokenize(query)
+    )
 
     if not query_words:
         return 0
 
-    content = normalize(chunk["content"])
-    content_words = set(tokenize(content))
+    content = normalize(
+        chunk["content"]
+    )
 
-    matched_words = query_words & content_words
+    content_words = set(
+        tokenize(content)
+    )
+
+    matched_words = (
+        query_words & content_words
+    )
 
     if not matched_words:
         return 0
@@ -104,15 +133,21 @@ def _score_chunk(query: str, chunk: dict) -> int:
     # ---------------------------------------------------------
     # 1. Term coverage
     # ---------------------------------------------------------
-    score += len(matched_words) * 2
+    score += (
+        len(matched_words) * 2
+    )
 
     # ---------------------------------------------------------
     # 2. Reward chunks matching most/all query concepts
     # ---------------------------------------------------------
-    coverage = len(matched_words) / len(query_words)
+    coverage = (
+        len(matched_words)
+        / len(query_words)
+    )
 
     if coverage >= 0.75:
         score += 4
+
     elif coverage >= 0.5:
         score += 2
 
@@ -121,18 +156,26 @@ def _score_chunk(query: str, chunk: dict) -> int:
     # ---------------------------------------------------------
     heading_words = set(
         tokenize(
-            _heading_text(chunk["content"])
+            _heading_text(
+                chunk["content"]
+            )
         )
     )
 
-    heading_matches = query_words & heading_words
+    heading_matches = (
+        query_words & heading_words
+    )
 
-    score += len(heading_matches) * 8
+    score += (
+        len(heading_matches) * 8
+    )
 
     # ---------------------------------------------------------
     # 4. Exact phrase match
     # ---------------------------------------------------------
-    normalized_query = normalize(query)
+    normalized_query = normalize(
+        query
+    )
 
     query_tokens = re.findall(
         r"[a-zA-Z0-9]+",
@@ -140,7 +183,9 @@ def _score_chunk(query: str, chunk: dict) -> int:
     )
 
     if len(query_tokens) >= 2:
-        phrase = " ".join(query_tokens)
+        phrase = " ".join(
+            query_tokens
+        )
 
         if phrase in content:
             score += 8
@@ -157,12 +202,18 @@ def _score_chunk(query: str, chunk: dict) -> int:
     }
 
     if len(positions) >= 2:
-        indexes = sorted(positions.values())
+        indexes = sorted(
+            positions.values()
+        )
 
-        distance = indexes[-1] - indexes[0]
+        distance = (
+            indexes[-1]
+            - indexes[0]
+        )
 
         if distance <= 5:
             score += 3
+
         elif distance <= 10:
             score += 1
 
@@ -173,7 +224,10 @@ def retrieve(
     query: str,
     limit: int = 3,
 ) -> list[dict]:
-    """Retrieve portfolio chunks using deterministic weighted scoring."""
+    """
+    Retrieve portfolio chunks using deterministic
+    weighted scoring and relative relevance filtering.
+    """
 
     if limit <= 0:
         return []
@@ -184,12 +238,13 @@ def retrieve(
     results = []
 
     for chunk in load_chunks():
+
         score = _score_chunk(
             query,
             chunk,
         )
 
-        if score > 0:
+        if score >= MIN_RETRIEVAL_SCORE:
             results.append(
                 {
                     "source": chunk["source"],
@@ -207,19 +262,47 @@ def retrieve(
         )
     )
 
-    # Prefer distinct sources so top-k represents multiple
-    # independent knowledge documents when available.
+    # ---------------------------------------------------------
+    # Relative relevance filtering
+    #
+    # limit is now a maximum number of results, not a
+    # requirement to return weakly related documents.
+    # ---------------------------------------------------------
+    if results:
+        best_score = results[0]["score"]
+
+        relevance_threshold = (
+            best_score
+            * MIN_RELEVANCE_RATIO
+        )
+
+        results = [
+            result
+            for result in results
+            if result["score"]
+            >= relevance_threshold
+        ]
+
+    # ---------------------------------------------------------
+    # Prefer distinct sources.
+    # ---------------------------------------------------------
     selected = []
     seen_sources = set()
 
     for result in results:
+
         if result["source"] in seen_sources:
             continue
 
         selected.append(result)
-        seen_sources.add(result["source"])
+
+        seen_sources.add(
+            result["source"]
+        )
 
         if len(selected) >= limit:
             break
 
     return selected
+
+   
