@@ -286,6 +286,9 @@ def _select_distinct_sources(
 ) -> list[dict]:
     """Prefer one result per source."""
 
+    if limit <= 0:
+        return []
+
     selected = []
     seen_sources = set()
 

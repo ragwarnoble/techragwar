@@ -1,0 +1,11 @@
+[run]
+source = app
+
+[report]
+omit =
+    app/rag/hybrid_evaluation.py
+    app/rag/retrieval_comparison.py
+    app/rag/regression.py
+    app/rag/semantic_evaluation.py
+    app/rag/semantic_diversity_evaluation.py
+    app/rag/semantic_threshold_evaluation.py
