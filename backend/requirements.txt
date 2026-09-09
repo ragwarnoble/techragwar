@@ -8,3 +8,4 @@ google-genai
 httpx
 pytest
 pytest-cov
+sentence-transformers

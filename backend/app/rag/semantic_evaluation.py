@@ -1,0 +1,452 @@
+from statistics import mean
+
+from app.config import Settings
+from app.rag.evaluation import EVALUATION_CASES
+from app.rag.ingest import load_chunks
+
+
+EMBEDDING_MODEL = "gemini-embedding-001"
+LIMIT = 3
+
+
+def get_client():
+    from google import genai
+
+    settings = Settings()
+
+    if not settings.google_api_key:
+        raise RuntimeError(
+            "GOOGLE_API_KEY is not configured. "
+            "Set it in backend/.env."
+        )
+
+    return genai.Client(api_key=settings.google_api_key)
+
+
+def embed_text(client, text):
+    response = client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=text,
+    )
+
+    return response.embeddings[0].values
+
+
+def cosine_similarity(vector_a, vector_b):
+    dot_product = sum(
+        a * b
+        for a, b in zip(vector_a, vector_b)
+    )
+
+    magnitude_a = sum(
+        a * a
+        for a in vector_a
+    ) ** 0.5
+
+    magnitude_b = sum(
+        b * b
+        for b in vector_b
+    ) ** 0.5
+
+    if magnitude_a == 0 or magnitude_b == 0:
+        return 0.0
+
+    return dot_product / (
+        magnitude_a * magnitude_b
+    )
+
+
+def unique_sources(retrieved_sources):
+    """
+    Preserve first-seen source order while removing duplicates.
+    """
+    return list(
+        dict.fromkeys(retrieved_sources)
+    )
+
+
+def hit_at_k(retrieved_sources, expected_sources):
+    expected_sources = set(expected_sources)
+
+    # For out-of-scope queries, success means
+    # no portfolio source was retrieved.
+    if not expected_sources:
+        return len(retrieved_sources) == 0
+
+    return bool(
+        set(retrieved_sources) & expected_sources
+    )
+
+
+def source_recall_at_k(
+    retrieved_sources,
+    expected_sources,
+):
+    expected_sources = set(expected_sources)
+
+    if not expected_sources:
+        return 0.0
+
+    retrieved = set(retrieved_sources)
+
+    return len(
+        retrieved & expected_sources
+    ) / len(expected_sources)
+
+
+def source_precision_at_k(
+    retrieved_sources,
+    expected_sources,
+):
+    expected_sources = set(expected_sources)
+    retrieved = set(retrieved_sources)
+
+    if not retrieved:
+        return 0.0
+
+    return len(
+        retrieved & expected_sources
+    ) / len(retrieved)
+
+
+def chunk_precision_at_k(
+    retrieved_sources,
+    expected_sources,
+):
+    expected_sources = set(expected_sources)
+
+    if not retrieved_sources:
+        return 0.0
+
+    relevant_chunks = sum(
+        source in expected_sources
+        for source in retrieved_sources
+    )
+
+    return relevant_chunks / len(
+        retrieved_sources
+    )
+
+
+def duplicate_rate(retrieved_sources):
+    if not retrieved_sources:
+        return 0.0
+
+    unique_count = len(
+        set(retrieved_sources)
+    )
+
+    duplicate_count = (
+        len(retrieved_sources)
+        - unique_count
+    )
+
+    return duplicate_count / len(
+        retrieved_sources
+    )
+
+
+def reciprocal_rank(
+    retrieved_sources,
+    expected_sources,
+):
+    expected_sources = set(expected_sources)
+
+    if not expected_sources:
+        return 0.0
+
+    for rank, source in enumerate(
+        retrieved_sources,
+        start=1,
+    ):
+        if source in expected_sources:
+            return 1.0 / rank
+
+    return 0.0
+
+
+def retrieve_semantic(
+    query_embedding,
+    embedded_chunks,
+    limit=LIMIT,
+):
+    scored = []
+
+    for chunk in embedded_chunks:
+        score = cosine_similarity(
+            query_embedding,
+            chunk["embedding"],
+        )
+
+        scored.append(
+            {
+                "source": chunk["source"],
+                "chunk": chunk["chunk"],
+                "content": chunk["content"],
+                "score": score,
+            }
+        )
+
+    # Deterministic ordering:
+    # 1. Highest semantic similarity
+    # 2. Source name
+    # 3. Chunk number
+    scored.sort(
+        key=lambda item: (
+            -item["score"],
+            item["source"],
+            item["chunk"],
+        )
+    )
+
+    return scored[:limit]
+
+
+def evaluate_case(
+    client,
+    embedded_chunks,
+    query,
+    expected_sources,
+):
+    query_embedding = embed_text(
+        client,
+        query,
+    )
+
+    retrieved = retrieve_semantic(
+        query_embedding,
+        embedded_chunks,
+        LIMIT,
+    )
+
+    retrieved_sources = [
+        result["source"]
+        for result in retrieved
+    ]
+
+    expected_sources = set(
+        expected_sources
+    )
+
+    unique_retrieved = unique_sources(
+        retrieved_sources
+    )
+
+    hit = hit_at_k(
+        retrieved_sources,
+        expected_sources,
+    )
+
+    source_recall = source_recall_at_k(
+        retrieved_sources,
+        expected_sources,
+    )
+
+    source_precision = source_precision_at_k(
+        retrieved_sources,
+        expected_sources,
+    )
+
+    chunk_precision = chunk_precision_at_k(
+        retrieved_sources,
+        expected_sources,
+    )
+
+    dup_rate = duplicate_rate(
+        retrieved_sources
+    )
+
+    rr = reciprocal_rank(
+        retrieved_sources,
+        expected_sources,
+    )
+
+    return {
+        "query": query,
+        "expected_sources": sorted(
+            expected_sources
+        ),
+        "retrieved": retrieved,
+        "retrieved_sources": retrieved_sources,
+        "unique_sources": unique_retrieved,
+        "hit": hit,
+        "source_recall": source_recall,
+        "source_precision": source_precision,
+        "chunk_precision": chunk_precision,
+        "duplicate_rate": dup_rate,
+        "reciprocal_rank": rr,
+    }
+
+
+def print_case(result):
+    print()
+    print(f"Query: {result['query']}")
+
+    print(
+        f"Expected:             "
+        f"{result['expected_sources']}"
+    )
+
+    print(
+        f"Retrieved chunks:     "
+        f"{result['retrieved_sources']}"
+    )
+
+    print(
+        f"Unique sources:       "
+        f"{result['unique_sources']}"
+    )
+
+    print("Similarity scores:")
+
+    for item in result["retrieved"]:
+        print(
+            f"  {item['source']}:{item['chunk']} "
+            f"score={item['score']:.4f}"
+        )
+
+    print(
+        f"Hit@3:               "
+        f"{result['hit']}"
+    )
+
+    print(
+        f"Source Recall@3:     "
+        f"{result['source_recall']:.3f}"
+    )
+
+    print(
+        f"Source Precision@3:  "
+        f"{result['source_precision']:.3f}"
+    )
+
+    print(
+        f"Chunk Precision@3:   "
+        f"{result['chunk_precision']:.3f}"
+    )
+
+    print(
+        f"Duplicate Rate@3:    "
+        f"{result['duplicate_rate']:.3f}"
+    )
+
+    print(
+        f"Reciprocal Rank:      "
+        f"{result['reciprocal_rank']:.3f}"
+    )
+
+
+def main():
+    print("SEMANTIC RAG EVALUATION")
+    print("=" * 70)
+    print()
+    print(
+        f"Embedding model: {EMBEDDING_MODEL}"
+    )
+
+    chunks = load_chunks()
+
+    print(
+        f"Chunks evaluated: {len(chunks)}"
+    )
+
+    print()
+    print("Initializing Gemini client...")
+
+    client = get_client()
+
+    print()
+    print("Embedding knowledge base chunks...")
+
+    embedded_chunks = []
+
+    for index, chunk in enumerate(
+        chunks,
+        start=1,
+    ):
+        print(
+            f"  [{index}/{len(chunks)}] "
+            f"{chunk['source']}:{chunk['chunk']}"
+        )
+
+        embedding = embed_text(
+            client,
+            chunk["content"],
+        )
+
+        embedded_chunks.append(
+            {
+                **chunk,
+                "embedding": embedding,
+            }
+        )
+
+    print()
+    print("Embedding evaluation queries...")
+
+    for index, case in enumerate(
+        EVALUATION_CASES,
+        start=1,
+    ):
+        print(
+            f"  [{index}/{len(EVALUATION_CASES)}] "
+            f"{case['query']}"
+        )
+
+    print()
+    print("=" * 70)
+    print("SEMANTIC RETRIEVAL RESULTS")
+    print("=" * 70)
+
+    results = []
+
+    for case in EVALUATION_CASES:
+        result = evaluate_case(
+            client,
+            embedded_chunks,
+            case["query"],
+            case["expected_sources"],
+        )
+
+        results.append(result)
+
+        print_case(result)
+
+    print()
+    print("=" * 70)
+    print("SEMANTIC RAG RESULTS")
+    print("=" * 70)
+
+    print(
+        f"Hit Rate@3:          "
+        f"{mean(r['hit'] for r in results):.3f}"
+    )
+
+    print(
+        f"Source Recall@3:     "
+        f"{mean(r['source_recall'] for r in results):.3f}"
+    )
+
+    print(
+        f"Source Precision@3:  "
+        f"{mean(r['source_precision'] for r in results):.3f}"
+    )
+
+    print(
+        f"Chunk Precision@3:   "
+        f"{mean(r['chunk_precision'] for r in results):.3f}"
+    )
+
+    print(
+        f"Duplicate Rate@3:    "
+        f"{mean(r['duplicate_rate'] for r in results):.3f}"
+    )
+
+    print(
+        f"MRR@3:               "
+        f"{mean(r['reciprocal_rank'] for r in results):.3f}"
+    )
+
+
+if __name__ == "__main__":
+    main()

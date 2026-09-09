@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ragwar-tech-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: AI_PROVIDER
+        value: google
+
+      - key: AI_MODEL
+        value: gemini-3.6-flash
+
+      - key: GOOGLE_API_KEY
+        sync: false
+
+      - key: CORS_ORIGINS
+        sync: false
