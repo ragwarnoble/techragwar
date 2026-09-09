@@ -4,9 +4,8 @@ from app.ai import AIService
 
 
 def test_ai_service_without_api_key(monkeypatch):
-
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "",
     )
 
@@ -15,17 +14,16 @@ def test_ai_service_without_api_key(monkeypatch):
     assert service.client is None
 
 
-def test_ai_service_with_google_api_key(monkeypatch):
-
+def test_ai_service_with_openai_api_key(monkeypatch):
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "test-key",
     )
 
     mock_client = MagicMock()
 
     monkeypatch.setattr(
-        "app.ai.genai.Client",
+        "app.ai.OpenAI",
         lambda api_key: mock_client,
     )
 
@@ -35,9 +33,8 @@ def test_ai_service_with_google_api_key(monkeypatch):
 
 
 def test_chat_uses_rag_fallback(monkeypatch):
-
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "",
     )
 
@@ -68,17 +65,16 @@ def test_chat_uses_rag_fallback(monkeypatch):
     assert response["sources"] == ["skills.md"]
 
 
-def test_unknown_question_does_not_call_gemini(monkeypatch):
-
+def test_unknown_question_does_not_call_openai(monkeypatch):
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "test-key",
     )
 
     mock_client = MagicMock()
 
     monkeypatch.setattr(
-        "app.ai.genai.Client",
+        "app.ai.OpenAI",
         lambda api_key: mock_client,
     )
 
@@ -101,29 +97,26 @@ def test_unknown_question_does_not_call_gemini(monkeypatch):
 
     assert response["sources"] == []
 
-    mock_client.models.generate_content.assert_not_called()
+    mock_client.responses.create.assert_not_called()
 
 
-def test_gemini_receives_rag_context(monkeypatch):
-
+def test_openai_receives_rag_context(monkeypatch):
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "test-key",
     )
 
     mock_client = MagicMock()
 
     mock_response = MagicMock()
-    mock_response.text = (
+    mock_response.output_text = (
         "Python and FastAPI are used for backend development."
     )
 
-    mock_client.models.generate_content.return_value = (
-        mock_response
-    )
+    mock_client.responses.create.return_value = mock_response
 
     monkeypatch.setattr(
-        "app.ai.genai.Client",
+        "app.ai.OpenAI",
         lambda api_key: mock_client,
     )
 
@@ -156,37 +149,39 @@ def test_gemini_receives_rag_context(monkeypatch):
 
     assert response["sources"] == ["skills.md"]
 
-    mock_client.models.generate_content.assert_called_once()
+    mock_client.responses.create.assert_called_once()
 
     call_kwargs = (
         mock_client
-        .models
-        .generate_content
+        .responses
+        .create
         .call_args.kwargs
     )
 
-    prompt = call_kwargs["contents"]
+    assert call_kwargs["model"] == "gpt-5.6-luna"
 
-    assert "Python and FastAPI" in prompt
-    assert "skills.md" in prompt
-    assert "What is used for backend development?" in prompt
+    assert "Python and FastAPI" in call_kwargs["input"]
+    assert "skills.md" in call_kwargs["input"]
+    assert (
+        "What is used for backend development?"
+        in call_kwargs["input"]
+    )
 
 
-def test_gemini_failure_uses_fallback(monkeypatch):
-
+def test_openai_failure_uses_fallback(monkeypatch):
     monkeypatch.setattr(
-        "app.ai.settings.google_api_key",
+        "app.ai.settings.openai_api_key",
         "test-key",
     )
 
     mock_client = MagicMock()
 
-    mock_client.models.generate_content.side_effect = (
-        RuntimeError("Gemini unavailable")
+    mock_client.responses.create.side_effect = (
+        RuntimeError("OpenAI unavailable")
     )
 
     monkeypatch.setattr(
-        "app.ai.genai.Client",
+        "app.ai.OpenAI",
         lambda api_key: mock_client,
     )
 
@@ -219,5 +214,4 @@ def test_gemini_failure_uses_fallback(monkeypatch):
 
     assert "Python" in response["response"]
     assert "FastAPI" in response["response"]
-
     assert response["sources"] == ["skills.md"]

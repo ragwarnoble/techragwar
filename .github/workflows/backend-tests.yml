@@ -40,8 +40,6 @@ jobs:
           pytest -q
 
       - name: Run RAG regression
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
           python -m app.rag.regression
 

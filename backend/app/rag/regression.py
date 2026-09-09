@@ -1,9 +1,9 @@
 """
-Automated RAG regression evaluation.
+Automated deterministic RAG regression evaluation.
 
-Runs the semantic retrieval evaluation against the established
+Runs the lexical retrieval evaluation against established
 quality thresholds and verifies that known out-of-scope queries
-are rejected by the semantic relevance threshold.
+are rejected by deterministic retrieval.
 """
 
 from .evaluation import (
@@ -12,17 +12,10 @@ from .evaluation import (
     recall_at_k,
     reciprocal_rank,
 )
-from .semantic_evaluation import (
-    embed_text,
-    retrieve_semantic,
-)
+from .retriever import retrieve
 
 
 LIMIT = 3
-
-# Empirically selected from the semantic threshold experiment.
-# This is a project-specific retrieval policy, not a universal value.
-SEMANTIC_THRESHOLD = 0.60
 
 REGRESSION_THRESHOLDS = {
     "hit_rate": 0.90,
@@ -33,18 +26,17 @@ REGRESSION_THRESHOLDS = {
 }
 
 
-def retrieve_for_evaluation(
-    query: str,
-    embedded_chunks: list[dict],
-    client,
-) -> list[dict]:
-    """Retrieve semantic results for a regression query."""
+OOS_QUERIES = [
+    "What is the weather today?",
+    "Who is the president of the United States?",
+]
 
-    query_embedding = embed_text(client, query)
 
-    return retrieve_semantic(
-        query_embedding,
-        embedded_chunks,
+def retrieve_for_evaluation(query: str) -> list[dict]:
+    """Retrieve deterministic RAG results for a regression query."""
+
+    return retrieve(
+        query,
         limit=LIMIT,
     )
 
@@ -118,19 +110,14 @@ def duplicate_rate(
     return duplicate_results / total_results
 
 
-def evaluate_retrieval(
-    embedded_chunks: list[dict],
-    client,
-) -> dict:
-    """Run the complete semantic retrieval regression evaluation."""
+def evaluate_retrieval() -> dict:
+    """Run the complete deterministic retrieval regression."""
 
     results_by_case = []
 
     for case in EVALUATION_CASES:
         results = retrieve_for_evaluation(
-            case["query"],
-            embedded_chunks,
-            client,
+            case["query"]
         )
 
         results_by_case.append(
@@ -171,7 +158,7 @@ def evaluate_retrieval(
             )
         )
 
-    metrics = {
+    return {
         "hit_rate": hit_rate(results_by_case),
         "recall": (
             sum(recall_scores) / len(recall_scores)
@@ -191,55 +178,32 @@ def evaluate_retrieval(
         "duplicate_rate": duplicate_rate(results_by_case),
     }
 
-    return metrics
 
-
-def evaluate_oos(
-    embedded_chunks: list[dict],
-    client,
-) -> bool:
+def evaluate_oos() -> bool:
     """
-    Verify that known out-of-scope queries are rejected
-    by the semantic relevance threshold.
+    Verify that known out-of-scope queries return no results.
 
-    The raw semantic retriever always returns top-K candidates.
-    Therefore, OOS rejection is evaluated after applying the
-    project's semantic relevance threshold.
+    OOS rejection is intentionally deterministic for CI.
     """
-
-    oos_queries = [
-        "What is the weather today?",
-        "Who is the president of the United States?",
-    ]
 
     passed = True
 
-    for query in oos_queries:
-        results = retrieve_for_evaluation(
-            query,
-            embedded_chunks,
-            client,
-        )
+    for query in OOS_QUERIES:
+        results = retrieve_for_evaluation(query)
 
-        relevant_results = [
-            result
-            for result in results
-            if result["score"] >= SEMANTIC_THRESHOLD
-        ]
-
-        if relevant_results:
+        if results:
             print(
-                f"FAIL: OOS query exceeded relevance threshold: "
-                f"{query}"
+                f"FAIL: OOS query returned results: {query}"
             )
 
-            for result in relevant_results:
+            for result in results:
                 print(
                     f"  {result['source']}:{result['chunk']} "
-                    f"score={result['score']:.4f}"
+                    f"score={result.get('score', 0):.4f}"
                 )
 
             passed = False
+
         else:
             print(
                 f"PASS: Rejected OOS query: {query}"
@@ -311,54 +275,20 @@ def check_thresholds(metrics: dict) -> bool:
 
 
 def main() -> int:
-    """Run the regression suite."""
+    """Run the deterministic regression suite."""
 
     print("RAG REGRESSION EVALUATION")
     print("=" * 70)
     print()
-    print(f"Embedding model: gemini-embedding-001")
+    print("Retrieval mode: deterministic lexical")
     print(f"Evaluation cases: {len(EVALUATION_CASES)}")
     print(f"Top-K: {LIMIT}")
-    print(f"Semantic threshold: {SEMANTIC_THRESHOLD:.2f}")
     print()
 
-    print("Initializing Gemini client...")
-
-    try:
-        from google import genai
-        from app.config import settings
-
-        client = genai.Client(
-            api_key=settings.google_api_key
-        )
-
-    except Exception as exc:
-        print(f"ERROR: Failed to initialize Gemini client: {exc}")
-        return 1
-
-    print("Building embeddings...")
-
-    try:
-        from .hybrid_retriever import build_embedded_chunks
-
-        embedded_chunks = build_embedded_chunks(client)
-
-    except Exception as exc:
-        print(f"ERROR: Failed to build embeddings: {exc}")
-        return 1
-
-    print(
-        f"Embedded chunks: {len(embedded_chunks)}"
-    )
-
-    print()
     print("Running retrieval evaluation...")
 
     try:
-        metrics = evaluate_retrieval(
-            embedded_chunks,
-            client,
-        )
+        metrics = evaluate_retrieval()
 
     except Exception as exc:
         print(
@@ -398,32 +328,20 @@ def main() -> int:
     thresholds_passed = check_thresholds(metrics)
 
     print()
-    print("OUT-OF-SCOPE REJECTION")
+    print("OUT-OF-SCOPE EVALUATION")
+    print("-" * 70)
 
-    try:
-        oos_passed = evaluate_oos(
-            embedded_chunks,
-            client,
-        )
-
-    except Exception as exc:
-        print(
-            f"ERROR: OOS evaluation failed: {exc}"
-        )
-        return 1
-
-    regression_passed = (
-        thresholds_passed
-        and oos_passed
-    )
+    oos_passed = evaluate_oos()
 
     print()
-    print(
-        "REGRESSION RESULT: "
-        f"{'PASS' if regression_passed else 'FAIL'}"
-    )
+    print("=" * 70)
 
-    return 0 if regression_passed else 1
+    if thresholds_passed and oos_passed:
+        print("RAG REGRESSION PASSED")
+        return 0
+
+    print("RAG REGRESSION FAILED")
+    return 1
 
 
 if __name__ == "__main__":

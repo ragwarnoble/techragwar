@@ -1,4 +1,4 @@
-from google import genai
+from openai import OpenAI
 
 from .config import settings
 from .rag.context import build_context
@@ -9,11 +9,11 @@ from .rag.retriever import retrieve
 class AIService:
 
     def __init__(self):
-        self.api_key = settings.google_api_key
+        self.api_key = settings.openai_api_key
         self.model = settings.ai_model
 
         self.client = (
-            genai.Client(api_key=self.api_key)
+            OpenAI(api_key=self.api_key)
             if self.api_key
             else None
         )
@@ -88,34 +88,28 @@ class AIService:
                 "sources": sources,
             }
 
-        prompt = f"""
-Portfolio context:
-
-{context}
-
-User question:
-
-{message}
-"""
+        prompt = (
+            "Portfolio context:\n\n"
+            f"{context}\n\n"
+            "User question:\n\n"
+            f"{message}"
+        )
 
         try:
-
-            response = self.client.models.generate_content(
+            response = self.client.responses.create(
                 model=self.model,
-                contents=(
-                    f"{RAG_SYSTEM_PROMPT}\n\n"
-                    f"{prompt}"
-                ),
+                instructions=RAG_SYSTEM_PROMPT,
+                input=prompt,
             )
 
             return {
-                "response": response.text,
+                "response": response.output_text,
                 "sources": sources,
             }
 
         except Exception as exc:
             print(
-                f"Gemini API error: "
+                f"OpenAI API error: "
                 f"{type(exc).__name__}: {exc}"
             )
 
@@ -129,4 +123,3 @@ User question:
 
 
 ai_service = AIService()
-

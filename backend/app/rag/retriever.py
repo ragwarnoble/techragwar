@@ -51,22 +51,35 @@ STOP_WORDS = {
 
 
 QUERY_EXPANSIONS = {
+    # Architecture / terminology.
     "server-side": "backend",
     "server side": "backend",
     "built": "build",
+
+    # Technology vocabulary.
+    "programming language": "python",
+    "database technology": "database sql sqlite",
+    "frontend technologies": "frontend html css javascript",
+    "frontend technology": "frontend html css javascript",
+    "apis": "api rest http",
+
+    # AI / RAG vocabulary.
+    "artificial intelligence": "ai llm",
+    "rag": "retrieval augmented generation",
 }
 
 
-# Minimum absolute score required for retrieval.
 MIN_RETRIEVAL_SCORE = 4
-
-
-# A result must reach at least this proportion
-# of the strongest result to be considered relevant.
 MIN_RELEVANCE_RATIO = 0.5
 
 
 def normalize(text: str) -> str:
+    """
+    Normalize text and apply deterministic query expansions.
+
+    Expansions bridge common user terminology with the vocabulary
+    used in the portfolio knowledge base.
+    """
     normalized = text.lower()
 
     for phrase, replacement in QUERY_EXPANSIONS.items():
@@ -79,6 +92,12 @@ def normalize(text: str) -> str:
 
 
 def tokenize(text: str) -> list[str]:
+    """
+    Convert text into normalized retrieval tokens.
+
+    Tokens shorter than three characters and generic query-intent
+    words are excluded.
+    """
     normalized = normalize(text)
 
     words = re.findall(
@@ -95,6 +114,9 @@ def tokenize(text: str) -> list[str]:
 
 
 def _heading_text(content: str) -> str:
+    """
+    Extract Markdown heading text from a document chunk.
+    """
     return " ".join(
         line.lstrip("#").strip()
         for line in content.splitlines()
@@ -104,118 +126,72 @@ def _heading_text(content: str) -> str:
 
 def _score_chunk(
     query: str,
-    chunk: dict,
+    content: str,
 ) -> int:
+    """
+    Calculate a deterministic relevance score for a chunk.
 
-    query_words = set(
-        tokenize(query)
-    )
+    Scoring factors:
+    - matched query terms
+    - query coverage
+    - heading matches
+    - exact phrase matches
+    - multiple matches within the same sentence
+    """
+    query_words = set(tokenize(query))
 
     if not query_words:
         return 0
 
-    content = normalize(
-        chunk["content"]
-    )
+    content_words = set(tokenize(content))
 
-    content_words = set(
-        tokenize(content)
-    )
-
-    matched_words = (
-        query_words & content_words
-    )
+    matched_words = query_words & content_words
 
     if not matched_words:
         return 0
 
-    score = 0
+    score = len(matched_words) * 2
 
-    # ---------------------------------------------------------
-    # 1. Term coverage
-    # ---------------------------------------------------------
-    score += (
-        len(matched_words) * 2
-    )
-
-    # ---------------------------------------------------------
-    # 2. Reward chunks matching most/all query concepts
-    # ---------------------------------------------------------
-    coverage = (
-        len(matched_words)
-        / len(query_words)
-    )
+    coverage = len(matched_words) / len(query_words)
 
     if coverage >= 0.75:
         score += 4
-
     elif coverage >= 0.5:
         score += 2
 
-    # ---------------------------------------------------------
-    # 3. Heading matches are strong signals
-    # ---------------------------------------------------------
-    heading_words = set(
-        tokenize(
-            _heading_text(
-                chunk["content"]
-            )
-        )
-    )
+    heading = _heading_text(content)
+    heading_words = set(tokenize(heading))
 
-    heading_matches = (
-        query_words & heading_words
-    )
+    heading_matches = query_words & heading_words
 
-    score += (
-        len(heading_matches) * 8
-    )
+    score += len(heading_matches) * 8
 
-    # ---------------------------------------------------------
-    # 4. Exact phrase match
-    # ---------------------------------------------------------
-    normalized_query = normalize(
-        query
-    )
+    normalized_query = normalize(query)
+    normalized_content = normalize(content)
 
-    query_tokens = re.findall(
-        r"[a-zA-Z0-9]+",
-        normalized_query,
-    )
+    if (
+        len(query_words) >= 2
+        and normalized_query in normalized_content
+    ):
+        score += 8
 
-    if len(query_tokens) >= 2:
-        phrase = " ".join(
-            query_tokens
-        )
-
-        if phrase in content:
-            score += 8
-
-    # ---------------------------------------------------------
-    # 5. Reward matching terms appearing in the same sentence
-    # ---------------------------------------------------------
     sentences = re.split(
-        r"[.!?]+",
-        content,
+        r"[.!?]\s+|\n+",
+        normalized_content,
     )
 
     for sentence in sentences:
-        sentence_words = set(
-            tokenize(sentence)
-        )
+        sentence_words = set(tokenize(sentence))
+        sentence_matches = query_words & sentence_words
 
-        sentence_matches = (
-            query_words & sentence_words
-        )
+        match_count = len(sentence_matches)
 
-        if len(sentence_matches) >= 2:
+        if match_count >= 4:
+            score += 2
+        elif match_count >= 3:
+            score += 2
+        elif match_count >= 2:
             score += 3
-
-        if len(sentence_matches) >= 3:
-            score += 2
-
-        if len(sentence_matches) >= 4:
-            score += 2
 
     return score
 
@@ -225,36 +201,38 @@ def retrieve(
     limit: int = 3,
 ) -> list[dict]:
     """
-    Retrieve portfolio chunks using deterministic
-    weighted scoring and relative relevance filtering.
-    """
+    Retrieve the most relevant portfolio chunks for a query.
 
+    Retrieval is deterministic and requires no external API,
+    network access, or embedding model.
+
+    At most one chunk is returned per source document.
+    """
     if limit <= 0:
         return []
 
-    if not tokenize(query):
-        return []
+    chunks = load_chunks()
 
-    results = []
+    scored = []
 
-    for chunk in load_chunks():
-
+    for chunk in chunks:
         score = _score_chunk(
             query,
-            chunk,
+            chunk["content"],
         )
 
         if score >= MIN_RETRIEVAL_SCORE:
-            results.append(
+            scored.append(
                 {
-                    "source": chunk["source"],
-                    "content": chunk["content"],
-                    "chunk": chunk["chunk"],
+                    **chunk,
                     "score": score,
                 }
             )
 
-    results.sort(
+    if not scored:
+        return []
+
+    scored.sort(
         key=lambda item: (
             -item["score"],
             item["source"],
@@ -262,34 +240,30 @@ def retrieve(
         )
     )
 
-    # Relative relevance filtering:
-    # limit is max number of results, not a requirement
-    # to return weakly related documents.
-    if results:
-        best_score = results[0]["score"]
+    best_score = scored[0]["score"]
 
-        relevance_threshold = (
-            best_score
-            * MIN_RELEVANCE_RATIO
-        )
+    minimum_score = max(
+        MIN_RETRIEVAL_SCORE,
+        best_score * MIN_RELEVANCE_RATIO,
+    )
 
-        results = [
-            result
-            for result in results
-            if result["score"]
-            >= relevance_threshold
-        ]
+    scored = [
+        item
+        for item in scored
+        if item["score"] >= minimum_score
+    ]
 
-    # Prefer distinct sources.
+    # Prefer distinct sources so the retrieved context represents
+    # multiple portfolio documents when several sources are relevant.
     selected = []
-    seen_sources = set()
+    sources = set()
 
-    for result in results:
-        if result["source"] in seen_sources:
+    for item in scored:
+        if item["source"] in sources:
             continue
 
-        selected.append(result)
-        seen_sources.add(result["source"])
+        selected.append(item)
+        sources.add(item["source"])
 
         if len(selected) >= limit:
             break

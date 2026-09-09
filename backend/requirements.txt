@@ -4,8 +4,8 @@ pydantic
 pydantic-settings
 SQLAlchemy
 email-validator
-google-genai
 httpx
 pytest
 pytest-cov
 sentence-transformers
+openai
