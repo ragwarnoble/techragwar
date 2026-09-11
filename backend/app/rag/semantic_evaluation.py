@@ -5,43 +5,28 @@ from app.rag.evaluation import EVALUATION_CASES
 from app.rag.ingest import load_chunks
 from app.rag.openai_embeddings import embedding_service
 
-
 EMBEDDING_MODEL = settings.embedding_model
 LIMIT = 3
 
 
-
 def cosine_similarity(vector_a, vector_b):
-    dot_product = sum(
-        a * b
-        for a, b in zip(vector_a, vector_b)
-    )
+    dot_product = sum(a * b for a, b in zip(vector_a, vector_b, strict=True))
 
-    magnitude_a = sum(
-        a * a
-        for a in vector_a
-    ) ** 0.5
+    magnitude_a = sum(a * a for a in vector_a) ** 0.5
 
-    magnitude_b = sum(
-        b * b
-        for b in vector_b
-    ) ** 0.5
+    magnitude_b = sum(b * b for b in vector_b) ** 0.5
 
     if magnitude_a == 0 or magnitude_b == 0:
         return 0.0
 
-    return dot_product / (
-        magnitude_a * magnitude_b
-    )
+    return dot_product / (magnitude_a * magnitude_b)
 
 
 def unique_sources(retrieved_sources):
     """
     Preserve first-seen source order while removing duplicates.
     """
-    return list(
-        dict.fromkeys(retrieved_sources)
-    )
+    return list(dict.fromkeys(retrieved_sources))
 
 
 def hit_at_k(retrieved_sources, expected_sources):
@@ -52,9 +37,7 @@ def hit_at_k(retrieved_sources, expected_sources):
     if not expected_sources:
         return len(retrieved_sources) == 0
 
-    return bool(
-        set(retrieved_sources) & expected_sources
-    )
+    return bool(set(retrieved_sources) & expected_sources)
 
 
 def source_recall_at_k(
@@ -68,9 +51,7 @@ def source_recall_at_k(
 
     retrieved = set(retrieved_sources)
 
-    return len(
-        retrieved & expected_sources
-    ) / len(expected_sources)
+    return len(retrieved & expected_sources) / len(expected_sources)
 
 
 def source_precision_at_k(
@@ -83,9 +64,7 @@ def source_precision_at_k(
     if not retrieved:
         return 0.0
 
-    return len(
-        retrieved & expected_sources
-    ) / len(retrieved)
+    return len(retrieved & expected_sources) / len(retrieved)
 
 
 def chunk_precision_at_k(
@@ -97,32 +76,20 @@ def chunk_precision_at_k(
     if not retrieved_sources:
         return 0.0
 
-    relevant_chunks = sum(
-        source in expected_sources
-        for source in retrieved_sources
-    )
+    relevant_chunks = sum(source in expected_sources for source in retrieved_sources)
 
-    return relevant_chunks / len(
-        retrieved_sources
-    )
+    return relevant_chunks / len(retrieved_sources)
 
 
 def duplicate_rate(retrieved_sources):
     if not retrieved_sources:
         return 0.0
 
-    unique_count = len(
-        set(retrieved_sources)
-    )
+    unique_count = len(set(retrieved_sources))
 
-    duplicate_count = (
-        len(retrieved_sources)
-        - unique_count
-    )
+    duplicate_count = len(retrieved_sources) - unique_count
 
-    return duplicate_count / len(
-        retrieved_sources
-    )
+    return duplicate_count / len(retrieved_sources)
 
 
 def reciprocal_rank(
@@ -193,18 +160,11 @@ def evaluate_case(
         LIMIT,
     )
 
-    retrieved_sources = [
-        result["source"]
-        for result in retrieved
-    ]
+    retrieved_sources = [result["source"] for result in retrieved]
 
-    expected_sources = set(
-        expected_sources
-    )
+    expected_sources = set(expected_sources)
 
-    unique_retrieved = unique_sources(
-        retrieved_sources
-    )
+    unique_retrieved = unique_sources(retrieved_sources)
 
     hit = hit_at_k(
         retrieved_sources,
@@ -226,9 +186,7 @@ def evaluate_case(
         expected_sources,
     )
 
-    dup_rate = duplicate_rate(
-        retrieved_sources
-    )
+    dup_rate = duplicate_rate(retrieved_sources)
 
     rr = reciprocal_rank(
         retrieved_sources,
@@ -237,9 +195,7 @@ def evaluate_case(
 
     return {
         "query": query,
-        "expected_sources": sorted(
-            expected_sources
-        ),
+        "expected_sources": sorted(expected_sources),
         "retrieved": retrieved,
         "retrieved_sources": retrieved_sources,
         "unique_sources": unique_retrieved,
@@ -256,73 +212,39 @@ def print_case(result):
     print()
     print(f"Query: {result['query']}")
 
-    print(
-        f"Expected:             "
-        f"{result['expected_sources']}"
-    )
+    print(f"Expected:             {result['expected_sources']}")
 
-    print(
-        f"Retrieved chunks:     "
-        f"{result['retrieved_sources']}"
-    )
+    print(f"Retrieved chunks:     {result['retrieved_sources']}")
 
-    print(
-        f"Unique sources:       "
-        f"{result['unique_sources']}"
-    )
+    print(f"Unique sources:       {result['unique_sources']}")
 
     print("Similarity scores:")
 
     for item in result["retrieved"]:
-        print(
-            f"  {item['source']}:{item['chunk']} "
-            f"score={item['score']:.4f}"
-        )
+        print(f"  {item['source']}:{item['chunk']} score={item['score']:.4f}")
 
-    print(
-        f"Hit@3:               "
-        f"{result['hit']}"
-    )
+    print(f"Hit@3:               {result['hit']}")
 
-    print(
-        f"Source Recall@3:     "
-        f"{result['source_recall']:.3f}"
-    )
+    print(f"Source Recall@3:     {result['source_recall']:.3f}")
 
-    print(
-        f"Source Precision@3:  "
-        f"{result['source_precision']:.3f}"
-    )
+    print(f"Source Precision@3:  {result['source_precision']:.3f}")
 
-    print(
-        f"Chunk Precision@3:   "
-        f"{result['chunk_precision']:.3f}"
-    )
+    print(f"Chunk Precision@3:   {result['chunk_precision']:.3f}")
 
-    print(
-        f"Duplicate Rate@3:    "
-        f"{result['duplicate_rate']:.3f}"
-    )
+    print(f"Duplicate Rate@3:    {result['duplicate_rate']:.3f}")
 
-    print(
-        f"Reciprocal Rank:      "
-        f"{result['reciprocal_rank']:.3f}"
-    )
+    print(f"Reciprocal Rank:      {result['reciprocal_rank']:.3f}")
 
 
 def main():
     print("SEMANTIC RAG EVALUATION")
     print("=" * 70)
     print()
-    print(
-        f"Embedding model: {EMBEDDING_MODEL}"
-    )
+    print(f"Embedding model: {EMBEDDING_MODEL}")
 
     chunks = load_chunks()
 
-    print(
-        f"Chunks evaluated: {len(chunks)}"
-    )
+    print(f"Chunks evaluated: {len(chunks)}")
 
     if not embedding_service.available:
         raise RuntimeError(
@@ -340,13 +262,10 @@ def main():
     embedded_chunks = []
 
     for index, (chunk, embedding) in enumerate(
-        zip(chunks, embeddings),
+        zip(chunks, embeddings, strict=True),
         start=1,
     ):
-        print(
-            f"  [{index}/{len(chunks)}] "
-            f"{chunk['source']}:{chunk['chunk']}"
-        )
+        print(f"  [{index}/{len(chunks)}] {chunk['source']}:{chunk['chunk']}")
 
         embedded_chunks.append(
             {
@@ -366,10 +285,7 @@ def main():
         EVALUATION_CASES,
         start=1,
     ):
-        print(
-            f"  [{index}/{len(EVALUATION_CASES)}] "
-            f"{case['query']}"
-        )
+        print(f"  [{index}/{len(EVALUATION_CASES)}] {case['query']}")
 
     print()
     print("=" * 70)
@@ -381,6 +297,7 @@ def main():
     for case, query_embedding in zip(
         EVALUATION_CASES,
         query_embeddings,
+        strict=True,
     ):
         result = evaluate_case(
             query_embedding,
@@ -398,35 +315,17 @@ def main():
     print("SEMANTIC RAG RESULTS")
     print("=" * 70)
 
-    print(
-        f"Hit Rate@3:          "
-        f"{mean(r['hit'] for r in results):.3f}"
-    )
+    print(f"Hit Rate@3:          {mean(r['hit'] for r in results):.3f}")
 
-    print(
-        f"Source Recall@3:     "
-        f"{mean(r['source_recall'] for r in results):.3f}"
-    )
+    print(f"Source Recall@3:     {mean(r['source_recall'] for r in results):.3f}")
 
-    print(
-        f"Source Precision@3:  "
-        f"{mean(r['source_precision'] for r in results):.3f}"
-    )
+    print(f"Source Precision@3:  {mean(r['source_precision'] for r in results):.3f}")
 
-    print(
-        f"Chunk Precision@3:   "
-        f"{mean(r['chunk_precision'] for r in results):.3f}"
-    )
+    print(f"Chunk Precision@3:   {mean(r['chunk_precision'] for r in results):.3f}")
 
-    print(
-        f"Duplicate Rate@3:    "
-        f"{mean(r['duplicate_rate'] for r in results):.3f}"
-    )
+    print(f"Duplicate Rate@3:    {mean(r['duplicate_rate'] for r in results):.3f}")
 
-    print(
-        f"MRR@3:               "
-        f"{mean(r['reciprocal_rank'] for r in results):.3f}"
-    )
+    print(f"MRR@3:               {mean(r['reciprocal_rank'] for r in results):.3f}")
 
 
 if __name__ == "__main__":

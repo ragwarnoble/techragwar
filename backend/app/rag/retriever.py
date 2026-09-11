@@ -2,7 +2,6 @@ import re
 
 from .ingest import load_chunks
 
-
 STOP_WORDS = {
     "the",
     "a",
@@ -33,7 +32,6 @@ STOP_WORDS = {
     "portfolio",
     "ragwar",
     "tech",
-
     # Generic query-intent words.
     "tools",
     "technology",
@@ -55,14 +53,12 @@ QUERY_EXPANSIONS = {
     "server-side": "backend",
     "server side": "backend",
     "built": "build",
-
     # Technology vocabulary.
     "programming language": "python",
     "database technology": "database sql sqlite",
     "frontend technologies": "frontend html css javascript",
     "frontend technology": "frontend html css javascript",
     "apis": "api rest http",
-
     # AI / RAG vocabulary.
     "artificial intelligence": "ai llm",
     "rag": "retrieval augmented generation",
@@ -105,12 +101,7 @@ def tokenize(text: str) -> list[str]:
         normalized,
     )
 
-    return [
-        word
-        for word in words
-        if len(word) > 2
-        and word not in STOP_WORDS
-    ]
+    return [word for word in words if len(word) > 2 and word not in STOP_WORDS]
 
 
 def _heading_text(content: str) -> str:
@@ -169,10 +160,7 @@ def _score_chunk(
     normalized_query = normalize(query)
     normalized_content = normalize(content)
 
-    if (
-        len(query_words) >= 2
-        and normalized_query in normalized_content
-    ):
+    if len(query_words) >= 2 and normalized_query in normalized_content:
         score += 8
 
     sentences = re.split(
@@ -186,9 +174,7 @@ def _score_chunk(
 
         match_count = len(sentence_matches)
 
-        if match_count >= 4:
-            score += 2
-        elif match_count >= 3:
+        if match_count >= 4 or match_count >= 3:
             score += 2
         elif match_count >= 2:
             score += 3
@@ -247,11 +233,7 @@ def retrieve(
         best_score * MIN_RELEVANCE_RATIO,
     )
 
-    scored = [
-        item
-        for item in scored
-        if item["score"] >= minimum_score
-    ]
+    scored = [item for item in scored if item["score"] >= minimum_score]
 
     # Prefer distinct sources so the retrieved context represents
     # multiple portfolio documents when several sources are relevant.

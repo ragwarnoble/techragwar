@@ -12,7 +12,6 @@ from .semantic_retriever import (
     retrieve_semantic,
 )
 
-
 SEMANTIC_THRESHOLD = 0.60
 TOP_K = 3
 
@@ -27,10 +26,7 @@ def build_embedded_chunks() -> list[dict]:
         embedded_chunks,
         start=1,
     ):
-        print(
-            f"  [{index}/{len(embedded_chunks)}] "
-            f"{chunk['source']}:{chunk['chunk']}"
-        )
+        print(f"  [{index}/{len(embedded_chunks)}] {chunk['source']}:{chunk['chunk']}")
 
     return embedded_chunks
 
@@ -54,11 +50,7 @@ def apply_threshold(
 ) -> list[dict]:
     """Keep only results meeting the semantic relevance threshold."""
 
-    return [
-        result
-        for result in results
-        if result["score"] >= threshold
-    ]
+    return [result for result in results if result["score"] >= threshold]
 
 
 def metrics_for_case(
@@ -68,10 +60,7 @@ def metrics_for_case(
     """Calculate metrics for one evaluation case."""
 
     if expected_sources:
-        hit = any(
-            result["source"] in expected_sources
-            for result in results
-        )
+        hit = any(result["source"] in expected_sources for result in results)
     else:
         hit = not results
 
@@ -175,22 +164,10 @@ def aggregate(evaluation: dict) -> dict:
         }
 
     return {
-        "hit_rate": sum(
-            case["hit"]
-            for case in cases
-        ) / len(cases),
-        "recall": sum(
-            case["recall"]
-            for case in cases
-        ) / len(cases),
-        "precision": sum(
-            case["precision"]
-            for case in cases
-        ) / len(cases),
-        "mrr": sum(
-            case["mrr"]
-            for case in cases
-        ) / len(cases),
+        "hit_rate": sum(case["hit"] for case in cases) / len(cases),
+        "recall": sum(case["recall"] for case in cases) / len(cases),
+        "precision": sum(case["precision"] for case in cases) / len(cases),
+        "mrr": sum(case["mrr"] for case in cases) / len(cases),
     }
 
 
@@ -199,30 +176,16 @@ def print_summary(evaluation: dict) -> None:
 
     metrics = aggregate(evaluation)
 
-    print(
-        f"\n{evaluation['name'].upper()} RETRIEVAL"
-    )
+    print(f"\n{evaluation['name'].upper()} RETRIEVAL")
     print("-" * 40)
 
-    print(
-        f"Hit Rate@3:       "
-        f"{metrics['hit_rate']:.3f}"
-    )
+    print(f"Hit Rate@3:       {metrics['hit_rate']:.3f}")
 
-    print(
-        f"Recall@3:         "
-        f"{metrics['recall']:.3f}"
-    )
+    print(f"Recall@3:         {metrics['recall']:.3f}")
 
-    print(
-        f"Precision@3:      "
-        f"{metrics['precision']:.3f}"
-    )
+    print(f"Precision@3:      {metrics['precision']:.3f}")
 
-    print(
-        f"MRR@3:            "
-        f"{metrics['mrr']:.3f}"
-    )
+    print(f"MRR@3:            {metrics['mrr']:.3f}")
 
 
 def print_query_comparison(
@@ -238,6 +201,7 @@ def print_query_comparison(
     for lexical_case, semantic_case in zip(
         lexical["cases"],
         semantic["cases"],
+        strict=True,
     ):
         if lexical_case["hit"] == semantic_case["hit"]:
             continue
@@ -246,39 +210,20 @@ def print_query_comparison(
 
         print(f"\nQuery: {query}")
 
-        print(
-            "  Lexical:  "
-            + (
-                "HIT"
-                if lexical_case["hit"]
-                else "MISS"
-            )
-        )
+        print("  Lexical:  " + ("HIT" if lexical_case["hit"] else "MISS"))
 
-        print(
-            "  Semantic: "
-            + (
-                "HIT"
-                if semantic_case["hit"]
-                else "MISS"
-            )
-        )
+        print("  Semantic: " + ("HIT" if semantic_case["hit"] else "MISS"))
 
         print("  Lexical sources:")
 
         for result in lexical_case["results"]:
-            print(
-                f"    {result['source']}:"
-                f"{result['chunk']}"
-            )
+            print(f"    {result['source']}:{result['chunk']}")
 
         print("  Semantic sources:")
 
         for result in semantic_case["results"]:
             print(
-                f"    {result['source']}:"
-                f"{result['chunk']}"
-                f" score={result['score']:.4f}"
+                f"    {result['source']}:{result['chunk']} score={result['score']:.4f}"
             )
 
 
@@ -295,30 +240,20 @@ def print_oos_analysis(
     for lexical_case, semantic_case in zip(
         lexical["cases"],
         semantic["cases"],
+        strict=True,
     ):
         if lexical_case["expected"]:
             continue
 
-        print(
-            f"\n{lexical_case['query']}"
-        )
+        print(f"\n{lexical_case['query']}")
 
         print(
-            "  Lexical:  "
-            + (
-                "REJECTED"
-                if not lexical_case["results"]
-                else "ACCEPTED"
-            )
+            "  Lexical:  " + ("REJECTED" if not lexical_case["results"] else "ACCEPTED")
         )
 
         print(
             "  Semantic: "
-            + (
-                "REJECTED"
-                if not semantic_case["results"]
-                else "ACCEPTED"
-            )
+            + ("REJECTED" if not semantic_case["results"] else "ACCEPTED")
         )
 
         if semantic_case["results"]:
@@ -337,10 +272,7 @@ def main() -> None:
     print("=" * 70)
 
     print(f"Top K: {TOP_K}")
-    print(
-        f"Semantic threshold: "
-        f"{SEMANTIC_THRESHOLD:.2f}"
-    )
+    print(f"Semantic threshold: {SEMANTIC_THRESHOLD:.2f}")
 
     embedded_chunks = build_embedded_chunks()
 

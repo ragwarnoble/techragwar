@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data" / "portfolio"
 
@@ -89,7 +88,4 @@ if __name__ == "__main__":
     print(f"Loaded {len(chunks)} chunks.")
 
     for chunk in chunks:
-        print(
-            f"- {chunk['source']} "
-            f"(chunk={chunk['chunk']})"
-        )
+        print(f"- {chunk['source']} (chunk={chunk['chunk']})")

@@ -1,11 +1,9 @@
 from .retriever import retrieve
 
-
 EVALUATION_CASES = [
     # ---------------------------------------------------------
     # Direct factual
     # ---------------------------------------------------------
-
     {
         "query": "What programming language is used?",
         "expected_sources": {"about.md", "skills.md"},
@@ -26,11 +24,9 @@ EVALUATION_CASES = [
         "query": "What database technology is listed?",
         "expected_sources": {"about.md", "skills.md"},
     },
-
     # ---------------------------------------------------------
     # Architecture
     # ---------------------------------------------------------
-
     {
         "query": "How is the system architecture separated?",
         "expected_sources": {"architecture.md"},
@@ -43,11 +39,9 @@ EVALUATION_CASES = [
         "query": "How does the AI service obtain information?",
         "expected_sources": {"architecture.md"},
     },
-
     # ---------------------------------------------------------
     # Projects
     # ---------------------------------------------------------
-
     {
         "query": "What is Framework-FreeFE?",
         "expected_sources": {
@@ -63,11 +57,9 @@ EVALUATION_CASES = [
         "query": "What does the Agentic Systems project explore?",
         "expected_sources": {"projects.md"},
     },
-
     # ---------------------------------------------------------
     # Technologies / skills
     # ---------------------------------------------------------
-
     {
         "query": "What backend skills are listed?",
         "expected_sources": {"skills.md"},
@@ -80,11 +72,9 @@ EVALUATION_CASES = [
         "query": "What AI skills are listed?",
         "expected_sources": {"skills.md"},
     },
-
     # ---------------------------------------------------------
     # Cross-document
     # ---------------------------------------------------------
-
     {
         "query": "What technologies are used to build Framework-FreeFE?",
         "expected_sources": {
@@ -110,11 +100,9 @@ EVALUATION_CASES = [
             "skills.md",
         },
     },
-
     # ---------------------------------------------------------
     # Unknown / out-of-scope
     # ---------------------------------------------------------
-
     {
         "query": "What is the weather today?",
         "expected_sources": {},
@@ -123,11 +111,9 @@ EVALUATION_CASES = [
         "query": "Who is the president of the United States?",
         "expected_sources": {},
     },
-
     # ---------------------------------------------------------
     # Ambiguous
     # ---------------------------------------------------------
-
     {
         "query": "What APIs are used?",
         "expected_sources": {
@@ -164,16 +150,9 @@ def evaluate_case(
         limit=limit,
     )
 
-    retrieved_sources = [
-        result["source"]
-        for result in results
-    ]
+    retrieved_sources = [result["source"] for result in results]
 
-    relevant = [
-        source
-        for source in retrieved_sources
-        if source in expected_sources
-    ]
+    relevant = [source for source in retrieved_sources if source in expected_sources]
 
     return {
         "query": query,
@@ -208,14 +187,9 @@ def recall_at_k(
     if not expected_sources:
         return 0.0
 
-    retrieved_sources = {
-        result["source"]
-        for result in results
-    }
+    retrieved_sources = {result["source"] for result in results}
 
-    return len(
-        retrieved_sources & expected_sources
-    ) / len(expected_sources)
+    return len(retrieved_sources & expected_sources) / len(expected_sources)
 
 
 def precision_at_k(
@@ -225,11 +199,7 @@ def precision_at_k(
     if not results:
         return 0.0
 
-    relevant = sum(
-        1
-        for result in results
-        if result["source"] in expected_sources
-    )
+    relevant = sum(1 for result in results if result["source"] in expected_sources)
 
     return relevant / len(results)
 
@@ -306,10 +276,7 @@ def mean_reciprocal_rank_results(
 def unique_source_count(
     results: list[dict],
 ) -> int:
-    return len({
-        result["source"]
-        for result in results
-    })
+    return len({result["source"] for result in results})
 
 
 def duplicate_source_count(
@@ -321,10 +288,7 @@ def duplicate_source_count(
 def unique_chunk_count(
     results: list[dict],
 ) -> int:
-    return len({
-        chunk_id(result)
-        for result in results
-    })
+    return len({chunk_id(result) for result in results})
 
 
 def duplicate_chunk_count(
@@ -363,65 +327,36 @@ if __name__ == "__main__":
         )
 
         print()
-        print(
-            f"QUESTION: {result['query']}"
-        )
+        print(f"QUESTION: {result['query']}")
 
-        print(
-            "Expected:     "
-            f"{sorted(result['expected_sources'])}"
-        )
+        print(f"Expected:     {sorted(result['expected_sources'])}")
 
-        print(
-            "Retrieved:    "
-            f"{result['retrieved_sources']}"
-        )
+        print(f"Retrieved:    {result['retrieved_sources']}")
 
-        print(
-            f"Recall@3:     {recall:.3f}"
-        )
+        print(f"Recall@3:     {recall:.3f}")
 
-        print(
-            f"Precision@3:  {precision:.3f}"
-        )
+        print(f"Precision@3:  {precision:.3f}")
 
-        print(
-            f"RR:           {rr:.3f}"
-        )
+        print(f"RR:           {rr:.3f}")
 
     hit_rate = (
-        sum(
-            result["hit"]
-            for result in results
-        )
-        / len(results)
-        if results
-        else 0.0
+        sum(result["hit"] for result in results) / len(results) if results else 0.0
     )
 
     mrr = mean_reciprocal_rank(results)
 
     duplicate_sources = sum(
-        len(result["retrieved_sources"])
-        - len(set(result["retrieved_sources"]))
+        len(result["retrieved_sources"]) - len(set(result["retrieved_sources"]))
         for result in results
     )
 
     print()
     print("=" * 70)
 
-    print(
-        f"Cases:             {len(results)}"
-    )
+    print(f"Cases:             {len(results)}")
 
-    print(
-        f"Hit Rate:          {hit_rate:.3f}"
-    )
+    print(f"Hit Rate:          {hit_rate:.3f}")
 
-    print(
-        f"MRR:               {mrr:.3f}"
-    )
+    print(f"MRR:               {mrr:.3f}")
 
-    print(
-        f"Duplicate sources: {duplicate_sources}"
-    )
+    print(f"Duplicate sources: {duplicate_sources}")

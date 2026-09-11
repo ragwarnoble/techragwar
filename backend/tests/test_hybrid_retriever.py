@@ -1,12 +1,8 @@
-import pytest
-
 from app.rag import hybrid_retriever
 
 
 def test_hybrid_tokens():
-    result = hybrid_retriever._hybrid_tokens(
-        "What backend tools are used?"
-    )
+    result = hybrid_retriever._hybrid_tokens("What backend tools are used?")
 
     assert "backend" in result
     assert "tools" in result
@@ -38,10 +34,13 @@ def test_lexical_candidates_invalid_query():
 
 
 def test_lexical_candidates_invalid_limit():
-    assert hybrid_retriever._lexical_candidates(
-        "Python",
-        limit=0,
-    ) == []
+    assert (
+        hybrid_retriever._lexical_candidates(
+            "Python",
+            limit=0,
+        )
+        == []
+    )
 
 
 def test_rank_map():
@@ -249,7 +248,7 @@ def test_retrieve_hybrid_no_embedded_chunks(monkeypatch):
     monkeypatch.setattr(
         hybrid_retriever,
         "build_embedded_chunks",
-        lambda: [],
+        list,
     )
 
     result = hybrid_retriever.retrieve_hybrid(
@@ -563,7 +562,4 @@ def test_build_embedded_chunks_delegates(monkeypatch):
         lambda: expected,
     )
 
-    assert (
-        hybrid_retriever.build_embedded_chunks()
-        == expected
-    )
+    assert hybrid_retriever.build_embedded_chunks() == expected

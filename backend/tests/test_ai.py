@@ -42,10 +42,7 @@ def test_chat_uses_rag_fallback(monkeypatch):
         {
             "source": "skills.md",
             "chunk": 1,
-            "content": (
-                "Python and FastAPI are used "
-                "for backend development."
-            ),
+            "content": ("Python and FastAPI are used for backend development."),
         }
     ]
 
@@ -56,9 +53,7 @@ def test_chat_uses_rag_fallback(monkeypatch):
 
     service = AIService()
 
-    response = service.chat(
-        "What is used for backend development?"
-    )
+    response = service.chat("What is used for backend development?")
 
     assert "Python" in response["response"]
     assert "FastAPI" in response["response"]
@@ -85,13 +80,10 @@ def test_unknown_question_does_not_call_openai(monkeypatch):
 
     service = AIService()
 
-    response = service.chat(
-        "What is the capital of France?"
-    )
+    response = service.chat("What is the capital of France?")
 
     assert (
-        response["response"]
-        == "That information is not available in the "
+        response["response"] == "That information is not available in the "
         "portfolio knowledge base."
     )
 
@@ -109,9 +101,7 @@ def test_openai_receives_rag_context(monkeypatch):
     mock_client = MagicMock()
 
     mock_response = MagicMock()
-    mock_response.output_text = (
-        "Python and FastAPI are used for backend development."
-    )
+    mock_response.output_text = "Python and FastAPI are used for backend development."
 
     mock_client.responses.create.return_value = mock_response
 
@@ -124,10 +114,7 @@ def test_openai_receives_rag_context(monkeypatch):
         {
             "source": "skills.md",
             "chunk": 1,
-            "content": (
-                "Python and FastAPI are used "
-                "for backend development."
-            ),
+            "content": ("Python and FastAPI are used for backend development."),
         }
     ]
 
@@ -138,34 +125,23 @@ def test_openai_receives_rag_context(monkeypatch):
 
     service = AIService()
 
-    response = service.chat(
-        "What is used for backend development?"
-    )
+    response = service.chat("What is used for backend development?")
 
     assert (
-        response["response"]
-        == "Python and FastAPI are used for backend development."
+        response["response"] == "Python and FastAPI are used for backend development."
     )
 
     assert response["sources"] == ["skills.md"]
 
     mock_client.responses.create.assert_called_once()
 
-    call_kwargs = (
-        mock_client
-        .responses
-        .create
-        .call_args.kwargs
-    )
+    call_kwargs = mock_client.responses.create.call_args.kwargs
 
     assert call_kwargs["model"] == "gpt-5.6-luna"
 
     assert "Python and FastAPI" in call_kwargs["input"]
     assert "skills.md" in call_kwargs["input"]
-    assert (
-        "What is used for backend development?"
-        in call_kwargs["input"]
-    )
+    assert "What is used for backend development?" in call_kwargs["input"]
 
 
 def test_openai_failure_uses_fallback(monkeypatch):
@@ -176,9 +152,7 @@ def test_openai_failure_uses_fallback(monkeypatch):
 
     mock_client = MagicMock()
 
-    mock_client.responses.create.side_effect = (
-        RuntimeError("OpenAI unavailable")
-    )
+    mock_client.responses.create.side_effect = RuntimeError("OpenAI unavailable")
 
     monkeypatch.setattr(
         "app.ai.OpenAI",
@@ -189,10 +163,7 @@ def test_openai_failure_uses_fallback(monkeypatch):
         {
             "source": "skills.md",
             "chunk": 1,
-            "content": (
-                "Python and FastAPI are used "
-                "for backend development."
-            ),
+            "content": ("Python and FastAPI are used for backend development."),
         }
     ]
 
@@ -203,14 +174,9 @@ def test_openai_failure_uses_fallback(monkeypatch):
 
     service = AIService()
 
-    response = service.chat(
-        "What is used for backend development?"
-    )
+    response = service.chat("What is used for backend development?")
 
-    assert (
-        "AI service is currently unavailable."
-        in response["response"]
-    )
+    assert "AI service is currently unavailable." in response["response"]
 
     assert "Python" in response["response"]
     assert "FastAPI" in response["response"]

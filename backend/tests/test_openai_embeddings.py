@@ -20,12 +20,15 @@ def test_service_without_api_key_is_unavailable():
 def test_service_with_api_key_is_available():
     mock_client = Mock()
 
-    with patch(
-        "app.rag.openai_embeddings.settings.openai_api_key",
-        "test-key",
-    ), patch(
-        "app.rag.openai_embeddings.OpenAI",
-        return_value=mock_client,
+    with (
+        patch(
+            "app.rag.openai_embeddings.settings.openai_api_key",
+            "test-key",
+        ),
+        patch(
+            "app.rag.openai_embeddings.OpenAI",
+            return_value=mock_client,
+        ),
     ):
         service = OpenAIEmbeddingService()
 

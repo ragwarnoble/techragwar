@@ -1,9 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import EmailStr
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ContactCreate(BaseModel):
@@ -19,9 +16,7 @@ class ContactResponse(BaseModel):
     message: str
     created_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatRequest(BaseModel):
@@ -30,7 +25,4 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    sources: list[str] = Field(
-        default_factory=list
-    )
-
+    sources: list[str] = Field(default_factory=list)

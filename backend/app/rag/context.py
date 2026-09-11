@@ -1,6 +1,5 @@
 from .retriever import retrieve
 
-
 DEFAULT_LIMIT = 3
 DEFAULT_MAX_CHARS = 6000
 
@@ -35,10 +34,7 @@ def build_context(
         chunk = result["chunk"]
         content = result["content"]
 
-        section = (
-            f"[Source: {source} | Chunk: {chunk}]\n"
-            f"{content.strip()}"
-        )
+        section = f"[Source: {source} | Chunk: {chunk}]\n{content.strip()}"
 
         separator = "\n\n"
 

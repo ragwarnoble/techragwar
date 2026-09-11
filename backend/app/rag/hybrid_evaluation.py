@@ -1,16 +1,15 @@
 from .evaluation import (
     EVALUATION_CASES,
-    recall_at_k,
     precision_at_k,
+    recall_at_k,
     reciprocal_rank,
 )
 from .hybrid_retriever import (
     build_embedded_chunks,
     retrieve_hybrid,
 )
-from .semantic_retriever import retrieve_semantic
 from .retriever import retrieve
-
+from .semantic_retriever import retrieve_semantic
 
 LIMIT = 3
 
@@ -33,14 +32,9 @@ def duplicate_rate(results: list[dict]) -> float:
     if not results:
         return 0.0
 
-    unique = len({
-        chunk_id(result)
-        for result in results
-    })
+    unique = len({chunk_id(result) for result in results})
 
-    return 1.0 - (
-        unique / len(results)
-    )
+    return 1.0 - (unique / len(results))
 
 
 def evaluate_retriever(
@@ -57,14 +51,9 @@ def evaluate_retriever(
     duplicate_rates = []
 
     for case in evaluation_cases:
+        results = retrieval_function(case["query"])
 
-        results = retrieval_function(
-            case["query"]
-        )
-
-        expected_sources = case[
-            "expected_sources"
-        ]
+        expected_sources = case["expected_sources"]
 
         # For normal in-scope queries, a hit means
         # at least one expected source was retrieved.
@@ -72,13 +61,7 @@ def evaluate_retriever(
         # For OOS queries, an empty result is the
         # correct behavior and is not counted as a hit.
         if expected_sources:
-            hits.append(
-                any(
-                    result["source"]
-                    in expected_sources
-                    for result in results
-                )
-            )
+            hits.append(any(result["source"] in expected_sources for result in results))
         else:
             hits.append(False)
 
@@ -103,38 +86,18 @@ def evaluate_retriever(
             )
         )
 
-        duplicate_rates.append(
-            duplicate_rate(results)
-        )
+        duplicate_rates.append(duplicate_rate(results))
 
     return {
         "name": retriever_name,
-        "hit_rate": (
-            sum(hits) / len(hits)
-            if hits
-            else 0.0
-        ),
-        "recall": (
-            sum(recalls) / len(recalls)
-            if recalls
-            else 0.0
-        ),
-        "precision": (
-            sum(precisions) / len(precisions)
-            if precisions
-            else 0.0
-        ),
+        "hit_rate": (sum(hits) / len(hits) if hits else 0.0),
+        "recall": (sum(recalls) / len(recalls) if recalls else 0.0),
+        "precision": (sum(precisions) / len(precisions) if precisions else 0.0),
         "mrr": (
-            sum(reciprocal_ranks)
-            / len(reciprocal_ranks)
-            if reciprocal_ranks
-            else 0.0
+            sum(reciprocal_ranks) / len(reciprocal_ranks) if reciprocal_ranks else 0.0
         ),
         "duplicate_rate": (
-            sum(duplicate_rates)
-            / len(duplicate_rates)
-            if duplicate_rates
-            else 0.0
+            sum(duplicate_rates) / len(duplicate_rates) if duplicate_rates else 0.0
         ),
     }
 
@@ -142,35 +105,18 @@ def evaluate_retriever(
 def print_metrics(metrics: dict) -> None:
     """Print metrics for one retriever."""
 
-    print(
-        f"\n{metrics['name'].upper()} RETRIEVAL"
-    )
+    print(f"\n{metrics['name'].upper()} RETRIEVAL")
     print("-" * 40)
 
-    print(
-        f"Hit Rate@{LIMIT}:       "
-        f"{metrics['hit_rate']:.3f}"
-    )
+    print(f"Hit Rate@{LIMIT}:       {metrics['hit_rate']:.3f}")
 
-    print(
-        f"Recall@{LIMIT}:         "
-        f"{metrics['recall']:.3f}"
-    )
+    print(f"Recall@{LIMIT}:         {metrics['recall']:.3f}")
 
-    print(
-        f"Precision@{LIMIT}:      "
-        f"{metrics['precision']:.3f}"
-    )
+    print(f"Precision@{LIMIT}:      {metrics['precision']:.3f}")
 
-    print(
-        f"MRR@{LIMIT}:            "
-        f"{metrics['mrr']:.3f}"
-    )
+    print(f"MRR@{LIMIT}:            {metrics['mrr']:.3f}")
 
-    print(
-        f"Duplicate Rate@{LIMIT}: "
-        f"{metrics['duplicate_rate']:.3f}"
-    )
+    print(f"Duplicate Rate@{LIMIT}: {metrics['duplicate_rate']:.3f}")
 
 
 def main() -> None:
@@ -180,42 +126,28 @@ def main() -> None:
     print(f"Top K: {LIMIT}")
 
     from .hybrid_retriever import (
-        SEMANTIC_THRESHOLD,
         LEXICAL_WEIGHT,
+        SEMANTIC_THRESHOLD,
         SEMANTIC_WEIGHT,
     )
 
-    print(
-        f"Semantic threshold: "
-        f"{SEMANTIC_THRESHOLD:.2f}"
-    )
+    print(f"Semantic threshold: {SEMANTIC_THRESHOLD:.2f}")
 
-    print(
-        f"Lexical weight: "
-        f"{LEXICAL_WEIGHT:.2f}"
-    )
+    print(f"Lexical weight: {LEXICAL_WEIGHT:.2f}")
 
-    print(
-        f"Semantic weight: "
-        f"{SEMANTIC_WEIGHT:.2f}"
-    )
+    print(f"Semantic weight: {SEMANTIC_WEIGHT:.2f}")
 
     print("\nBuilding semantic knowledge-base index...")
 
     embedded_chunks = build_embedded_chunks()
 
-    print(
-        f"  Embedded "
-        f"{len(embedded_chunks)} chunks"
-    )
+    print(f"  Embedded {len(embedded_chunks)} chunks")
 
     # ------------------------------------------------------------
     # Lexical retrieval
     # ------------------------------------------------------------
 
-    print(
-        "\nEvaluating lexical retrieval..."
-    )
+    print("\nEvaluating lexical retrieval...")
 
     lexical_metrics = evaluate_retriever(
         "Lexical",
@@ -230,9 +162,7 @@ def main() -> None:
     # Semantic retrieval
     # ------------------------------------------------------------
 
-    print(
-        "Evaluating semantic retrieval..."
-    )
+    print("Evaluating semantic retrieval...")
 
     def semantic_retrieve(
         query: str,
@@ -254,9 +184,7 @@ def main() -> None:
     # Hybrid retrieval
     # ------------------------------------------------------------
 
-    print(
-        "Evaluating hybrid retrieval..."
-    )
+    print("Evaluating hybrid retrieval...")
 
     def hybrid_retrieve(
         query: str,
@@ -278,17 +206,11 @@ def main() -> None:
     # Individual metrics
     # ------------------------------------------------------------
 
-    print_metrics(
-        lexical_metrics
-    )
+    print_metrics(lexical_metrics)
 
-    print_metrics(
-        semantic_metrics
-    )
+    print_metrics(semantic_metrics)
 
-    print_metrics(
-        hybrid_metrics
-    )
+    print_metrics(hybrid_metrics)
 
     # ------------------------------------------------------------
     # Side-by-side comparison
@@ -298,12 +220,7 @@ def main() -> None:
     print("RETRIEVAL COMPARISON")
     print("=" * 70)
 
-    print(
-        f"\n{'Metric':<24}"
-        f"{'Lexical':>12}"
-        f"{'Semantic':>12}"
-        f"{'Hybrid':>12}"
-    )
+    print(f"\n{'Metric':<24}{'Lexical':>12}{'Semantic':>12}{'Hybrid':>12}")
 
     print("-" * 60)
 
@@ -346,13 +263,7 @@ def main() -> None:
         semantic,
         hybrid,
     ) in rows:
-
-        print(
-            f"{name:<24}"
-            f"{lexical:>12.3f}"
-            f"{semantic:>12.3f}"
-            f"{hybrid:>12.3f}"
-        )
+        print(f"{name:<24}{lexical:>12.3f}{semantic:>12.3f}{hybrid:>12.3f}")
 
     # ------------------------------------------------------------
     # Query-level comparison
@@ -363,78 +274,39 @@ def main() -> None:
     print("=" * 70)
 
     for case in EVALUATION_CASES:
-
         query = case["query"]
-        expected_sources = case[
-            "expected_sources"
-        ]
+        expected_sources = case["expected_sources"]
 
-        results = hybrid_retrieve(
-            query
-        )
+        results = hybrid_retrieve(query)
 
-        print(
-            f"\nQuery: {query}"
-        )
+        print(f"\nQuery: {query}")
 
         # Normal in-scope query.
         if expected_sources:
+            hit = any(result["source"] in expected_sources for result in results)
 
-            hit = any(
-                result["source"]
-                in expected_sources
-                for result in results
-            )
-
-            print(
-                "  Hybrid: "
-                + (
-                    "HIT"
-                    if hit
-                    else "MISS"
-                )
-            )
+            print("  Hybrid: " + ("HIT" if hit else "MISS"))
 
         # Out-of-scope query.
         else:
-
             if results:
-                print(
-                    "  Hybrid: "
-                    "FALSE POSITIVE"
-                )
+                print("  Hybrid: FALSE POSITIVE")
             else:
-                print(
-                    "  Hybrid: "
-                    "CORRECT REJECTION"
-                )
+                print("  Hybrid: CORRECT REJECTION")
 
         if not results:
-            print(
-                "  Results: REJECTED"
-            )
+            print("  Results: REJECTED")
             continue
 
         for result in results:
+            lexical_rank = result.get("lexical_rank")
 
-            lexical_rank = result.get(
-                "lexical_rank"
-            )
+            semantic_rank = result.get("semantic_rank")
 
-            semantic_rank = result.get(
-                "semantic_rank"
-            )
-
-            lexical_rank_text = (
-                str(lexical_rank)
-                if lexical_rank is not None
-                else "-"
-            )
+            lexical_rank_text = str(lexical_rank) if lexical_rank is not None else "-"
 
             semantic_rank_text = (
-                str(semantic_rank)
-                if semantic_rank is not None
-                else "-"
+                str(semantic_rank) if semantic_rank is not None else "-"
             )
 
             print(
@@ -465,29 +337,18 @@ def main() -> None:
     ]
 
     for query in oos_queries:
+        results = hybrid_retrieve(query)
 
-        results = hybrid_retrieve(
-            query
-        )
+        status = "FALSE POSITIVE" if results else "REJECTED"
 
-        if results:
-            status = "FALSE POSITIVE"
-        else:
-            status = "REJECTED"
+        print(f"\n{query}")
 
-        print(
-            f"\n{query}"
-        )
-
-        print(
-            f"  Hybrid: {status}"
-        )
+        print(f"  Hybrid: {status}")
 
         if not results:
             continue
 
         for result in results:
-
             print(
                 f"    {result['source']}:"
                 f"{result['chunk']} "

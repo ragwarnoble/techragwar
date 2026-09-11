@@ -15,9 +15,7 @@ def test_empty_query_returns_empty_context():
 
 
 def test_unknown_query_returns_empty_context():
-    assert build_context(
-        "What is the capital of France?"
-    ) == ""
+    assert build_context("What is the capital of France?") == ""
 
 
 def test_context_respects_max_chars():
@@ -30,39 +28,39 @@ def test_context_respects_max_chars():
 
 
 def test_context_contains_source_metadata():
-    context = build_context(
-        "What tools are used for server-side development?"
-    )
+    context = build_context("What tools are used for server-side development?")
 
     assert "[Source: skills.md" in context
 
 
 def test_context_contains_chunk_metadata():
-    context = build_context(
-        "What tools are used for server-side development?"
-    )
+    context = build_context("What tools are used for server-side development?")
 
     assert "Chunk:" in context
 
 
 def test_context_contains_retrieved_content():
-    context = build_context(
-        "What tools are used for server-side development?"
-    )
+    context = build_context("What tools are used for server-side development?")
 
     assert "Python" in context
     assert "FastAPI" in context
 
 
 def test_invalid_limit_returns_empty_context():
-    assert build_context(
-        "frontend",
-        limit=0,
-    ) == ""
+    assert (
+        build_context(
+            "frontend",
+            limit=0,
+        )
+        == ""
+    )
 
 
 def test_invalid_max_chars_returns_empty_context():
-    assert build_context(
-        "frontend",
-        max_chars=0,
-    ) == ""
+    assert (
+        build_context(
+            "frontend",
+            max_chars=0,
+        )
+        == ""
+    )

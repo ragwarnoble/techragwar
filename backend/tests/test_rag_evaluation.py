@@ -75,9 +75,7 @@ def test_evaluate_case_with_no_results(monkeypatch):
 
 
 def test_recall_at_k():
-    results = retrieve(
-        "How does the portfolio AI/RAG system work?"
-    )
+    results = retrieve("How does the portfolio AI/RAG system work?")
 
     score = recall_at_k(
         results,
@@ -97,10 +95,13 @@ def test_recall_at_k_partial_recall():
         {"source": "other.md"},
     ]
 
-    assert recall_at_k(
-        results,
-        {"projects.md", "architecture.md"},
-    ) == 0.5
+    assert (
+        recall_at_k(
+            results,
+            {"projects.md", "architecture.md"},
+        )
+        == 0.5
+    )
 
 
 def test_recall_at_k_full_recall():
@@ -109,10 +110,13 @@ def test_recall_at_k_full_recall():
         {"source": "architecture.md"},
     ]
 
-    assert recall_at_k(
-        results,
-        {"projects.md", "architecture.md"},
-    ) == 1.0
+    assert (
+        recall_at_k(
+            results,
+            {"projects.md", "architecture.md"},
+        )
+        == 1.0
+    )
 
 
 def test_precision_at_k_empty_results():
@@ -126,10 +130,13 @@ def test_precision_at_k():
         {"source": "architecture.md"},
     ]
 
-    assert precision_at_k(
-        results,
-        {"projects.md", "architecture.md"},
-    ) == 2 / 3
+    assert (
+        precision_at_k(
+            results,
+            {"projects.md", "architecture.md"},
+        )
+        == 2 / 3
+    )
 
 
 def test_precision_at_k_all_relevant():
@@ -138,10 +145,13 @@ def test_precision_at_k_all_relevant():
         {"source": "architecture.md"},
     ]
 
-    assert precision_at_k(
-        results,
-        {"projects.md", "architecture.md"},
-    ) == 1.0
+    assert (
+        precision_at_k(
+            results,
+            {"projects.md", "architecture.md"},
+        )
+        == 1.0
+    )
 
 
 def test_reciprocal_rank_first_result():
@@ -150,10 +160,13 @@ def test_reciprocal_rank_first_result():
         {"source": "other.md"},
     ]
 
-    assert reciprocal_rank(
-        results,
-        {"projects.md"},
-    ) == 1.0
+    assert (
+        reciprocal_rank(
+            results,
+            {"projects.md"},
+        )
+        == 1.0
+    )
 
 
 def test_reciprocal_rank_second_result():
@@ -162,10 +175,13 @@ def test_reciprocal_rank_second_result():
         {"source": "projects.md"},
     ]
 
-    assert reciprocal_rank(
-        results,
-        {"projects.md"},
-    ) == 0.5
+    assert (
+        reciprocal_rank(
+            results,
+            {"projects.md"},
+        )
+        == 0.5
+    )
 
 
 def test_reciprocal_rank_no_relevant_result():
@@ -174,10 +190,13 @@ def test_reciprocal_rank_no_relevant_result():
         {"source": "another.md"},
     ]
 
-    assert reciprocal_rank(
-        results,
-        {"projects.md"},
-    ) == 0.0
+    assert (
+        reciprocal_rank(
+            results,
+            {"projects.md"},
+        )
+        == 0.0
+    )
 
 
 def test_mean_reciprocal_rank_empty_cases():
@@ -295,4 +314,3 @@ def test_duplicate_chunk_count_without_duplicates():
     ]
 
     assert duplicate_chunk_count(results) == 0
-

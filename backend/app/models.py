@@ -1,16 +1,11 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import Text
-from sqlalchemy import DateTime
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from .database import Base
 
 
 class ContactMessage(Base):
-
     __tablename__ = "contact_messages"
 
     id = Column(

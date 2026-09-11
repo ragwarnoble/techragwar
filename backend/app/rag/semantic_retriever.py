@@ -15,15 +15,9 @@ def cosine_similarity(
     if not query_vector or not document_vector:
         return 0.0
 
-    query_norm = sum(
-        value * value
-        for value in query_vector
-    ) ** 0.5
+    query_norm = sum(value * value for value in query_vector) ** 0.5
 
-    document_norm = sum(
-        value * value
-        for value in document_vector
-    ) ** 0.5
+    document_norm = sum(value * value for value in document_vector) ** 0.5
 
     if query_norm == 0 or document_norm == 0:
         return 0.0
@@ -33,12 +27,11 @@ def cosine_similarity(
         for query_value, document_value in zip(
             query_vector,
             document_vector,
+            strict=True,
         )
     )
 
-    return dot_product / (
-        query_norm * document_norm
-    )
+    return dot_product / (query_norm * document_norm)
 
 
 def build_index(
@@ -57,14 +50,9 @@ def build_index(
     if not chunks:
         return []
 
-    texts = [
-        chunk["content"]
-        for chunk in chunks
-    ]
+    texts = [chunk["content"] for chunk in chunks]
 
-    embeddings = embedding_service.embed_documents(
-        texts
-    )
+    embeddings = embedding_service.embed_documents(texts)
 
     return [
         {
@@ -74,6 +62,7 @@ def build_index(
         for chunk, embedding in zip(
             chunks,
             embeddings,
+            strict=True,
         )
     ]
 
@@ -97,9 +86,7 @@ def retrieve_semantic(
     if not embedded_chunks:
         return []
 
-    query_embedding = embedding_service.embed_query(
-        query
-    )
+    query_embedding = embedding_service.embed_query(query)
 
     scored = []
 

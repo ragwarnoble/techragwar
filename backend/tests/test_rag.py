@@ -46,20 +46,14 @@ def test_retrieve_framework_freefe():
     results = retrieve("Framework-FreeFE")
 
     assert results
-    assert any(
-        "Framework-FreeFE" in result["content"]
-        for result in results
-    )
+    assert any("Framework-FreeFE" in result["content"] for result in results)
 
 
 def test_retrieve_ai_projects():
     results = retrieve("AI Projects")
 
     assert results
-    assert any(
-        "AI" in result["content"]
-        for result in results
-    )
+    assert any("AI" in result["content"] for result in results)
 
 
 def test_retrieve_returns_empty_for_unknown_query():
@@ -80,12 +74,7 @@ def test_retrieve_invalid_limit():
 def test_chunk_document_preserves_source_and_chunk_metadata():
     document = {
         "source": "test.md",
-        "content": (
-            "## First\n\n"
-            "First section.\n\n"
-            "## Second\n\n"
-            "Second section."
-        ),
+        "content": ("## First\n\nFirst section.\n\n## Second\n\nSecond section."),
     }
 
     chunks = chunk_document(document)
@@ -137,18 +126,13 @@ def test_retrieve_preserves_chunk_metadata():
 
 
 def test_retrieve_ai_rag_returns_relevant_chunks():
-    results = retrieve(
-        "How does the portfolio AI/RAG system work?"
-    )
+    results = retrieve("How does the portfolio AI/RAG system work?")
 
     assert results
 
     sources = {result["source"] for result in results}
 
-    assert (
-        "projects.md" in sources
-        or "architecture.md" in sources
-    )
+    assert "projects.md" in sources or "architecture.md" in sources
 
 
 def test_retrieve_engineering_goals_returns_engineering_content():
@@ -167,8 +151,6 @@ def test_retrieve_engineering_goals_returns_engineering_content():
 
 
 def test_retrieve_unknown_question_returns_no_results():
-    results = retrieve(
-        "What is the capital of France?"
-    )
+    results = retrieve("What is the capital of France?")
 
     assert results == []

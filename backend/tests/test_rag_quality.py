@@ -9,18 +9,12 @@ def test_rag_quality_gate():
 
     assert results
 
-    hit_rate = (
-        sum(result["hit"] for result in results)
-        / len(results)
-    )
+    hit_rate = sum(result["hit"] for result in results) / len(results)
 
-    mrr = mean_reciprocal_rank_results(
-        results
-    )
+    mrr = mean_reciprocal_rank_results(results)
 
     duplicate_sources = sum(
-        len(result["retrieved_sources"])
-        - len(set(result["retrieved_sources"]))
+        len(result["retrieved_sources"]) - len(set(result["retrieved_sources"]))
         for result in results
     )
 

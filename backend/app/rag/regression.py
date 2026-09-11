@@ -1,11 +1,3 @@
-"""
-Automated deterministic RAG regression evaluation.
-
-Runs the lexical retrieval evaluation against established
-quality thresholds and verifies that known out-of-scope queries
-are rejected by deterministic retrieval.
-"""
-
 from .evaluation import (
     EVALUATION_CASES,
     precision_at_k,
@@ -13,7 +5,6 @@ from .evaluation import (
     reciprocal_rank,
 )
 from .retriever import retrieve
-
 
 LIMIT = 3
 
@@ -57,19 +48,12 @@ def hit_rate(
         if not expected_sources:
             continue
 
-        retrieved_sources = {
-            result["source"]
-            for result in results
-        }
+        retrieved_sources = {result["source"] for result in results}
 
         if retrieved_sources & expected_sources:
             hits += 1
 
-    scored_cases = sum(
-        1
-        for case, _ in results_by_case
-        if case["expected_sources"]
-    )
+    scored_cases = sum(1 for case, _ in results_by_case if case["expected_sources"])
 
     if scored_cases == 0:
         return 0.0
@@ -116,18 +100,12 @@ def evaluate_retrieval() -> dict:
     results_by_case = []
 
     for case in EVALUATION_CASES:
-        results = retrieve_for_evaluation(
-            case["query"]
-        )
+        results = retrieve_for_evaluation(case["query"])
 
-        results_by_case.append(
-            (case, results)
-        )
+        results_by_case.append((case, results))
 
     scored_cases = [
-        (case, results)
-        for case, results in results_by_case
-        if case["expected_sources"]
+        (case, results) for case, results in results_by_case if case["expected_sources"]
     ]
 
     recall_scores = []
@@ -160,20 +138,12 @@ def evaluate_retrieval() -> dict:
 
     return {
         "hit_rate": hit_rate(results_by_case),
-        "recall": (
-            sum(recall_scores) / len(recall_scores)
-            if recall_scores
-            else 0.0
-        ),
+        "recall": (sum(recall_scores) / len(recall_scores) if recall_scores else 0.0),
         "precision": (
-            sum(precision_scores) / len(precision_scores)
-            if precision_scores
-            else 0.0
+            sum(precision_scores) / len(precision_scores) if precision_scores else 0.0
         ),
         "mrr": (
-            sum(reciprocal_ranks) / len(reciprocal_ranks)
-            if reciprocal_ranks
-            else 0.0
+            sum(reciprocal_ranks) / len(reciprocal_ranks) if reciprocal_ranks else 0.0
         ),
         "duplicate_rate": duplicate_rate(results_by_case),
     }
@@ -192,9 +162,7 @@ def evaluate_oos() -> bool:
         results = retrieve_for_evaluation(query)
 
         if results:
-            print(
-                f"FAIL: OOS query returned results: {query}"
-            )
+            print(f"FAIL: OOS query returned results: {query}")
 
             for result in results:
                 print(
@@ -205,9 +173,7 @@ def evaluate_oos() -> bool:
             passed = False
 
         else:
-            print(
-                f"PASS: Rejected OOS query: {query}"
-            )
+            print(f"PASS: Rejected OOS query: {query}")
 
     return passed
 
@@ -254,21 +220,12 @@ def check_thresholds(metrics: dict) -> bool:
     ]
 
     for name, actual, threshold, operator in checks:
-        if operator == ">=":
-            check_passed = actual >= threshold
-        else:
-            check_passed = actual <= threshold
+        check_passed = actual >= threshold if operator == ">=" else actual <= threshold
 
         if check_passed:
-            print(
-                f"PASS: {name} "
-                f"{actual:.3f} {operator} {threshold:.3f}"
-            )
+            print(f"PASS: {name} {actual:.3f} {operator} {threshold:.3f}")
         else:
-            print(
-                f"FAIL: {name} "
-                f"{actual:.3f} {operator} {threshold:.3f}"
-            )
+            print(f"FAIL: {name} {actual:.3f} {operator} {threshold:.3f}")
             passed = False
 
     return passed
@@ -291,39 +248,22 @@ def main() -> int:
         metrics = evaluate_retrieval()
 
     except Exception as exc:
-        print(
-            f"ERROR: Retrieval evaluation failed: {exc}"
-        )
+        print(f"ERROR: Retrieval evaluation failed: {exc}")
         return 1
 
     print()
     print("METRICS")
     print("-" * 70)
 
-    print(
-        f"Hit Rate@{LIMIT}:       "
-        f"{metrics['hit_rate']:.3f}"
-    )
+    print(f"Hit Rate@{LIMIT}:       {metrics['hit_rate']:.3f}")
 
-    print(
-        f"Recall@{LIMIT}:         "
-        f"{metrics['recall']:.3f}"
-    )
+    print(f"Recall@{LIMIT}:         {metrics['recall']:.3f}")
 
-    print(
-        f"Precision@{LIMIT}:      "
-        f"{metrics['precision']:.3f}"
-    )
+    print(f"Precision@{LIMIT}:      {metrics['precision']:.3f}")
 
-    print(
-        f"MRR@{LIMIT}:            "
-        f"{metrics['mrr']:.3f}"
-    )
+    print(f"MRR@{LIMIT}:            {metrics['mrr']:.3f}")
 
-    print(
-        f"Duplicate Rate@{LIMIT}: "
-        f"{metrics['duplicate_rate']:.3f}"
-    )
+    print(f"Duplicate Rate@{LIMIT}: {metrics['duplicate_rate']:.3f}")
 
     thresholds_passed = check_thresholds(metrics)
 

@@ -1,0 +1,11 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "BLE", "B", "SIM", "PIE"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/ai.py" = ["BLE001"]
+"app/rag/regression.py" = ["BLE001"]
+"app/routes.py" = ["B008"]

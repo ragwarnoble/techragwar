@@ -7,16 +7,11 @@ from .rag.retriever import retrieve
 
 
 class AIService:
-
     def __init__(self):
         self.api_key = settings.openai_api_key
         self.model = settings.ai_model
 
-        self.client = (
-            OpenAI(api_key=self.api_key)
-            if self.api_key
-            else None
-        )
+        self.client = OpenAI(api_key=self.api_key) if self.api_key else None
 
     def _fallback_response(
         self,
@@ -25,10 +20,7 @@ class AIService:
     ) -> str:
 
         if not documents:
-            return (
-                "That information is not available in the "
-                "portfolio knowledge base."
-            )
+            return "That information is not available in the portfolio knowledge base."
 
         context = build_context(
             message,
@@ -36,10 +28,7 @@ class AIService:
         )
 
         if not context:
-            return (
-                "That information is not available in the "
-                "portfolio knowledge base."
-            )
+            return "That information is not available in the portfolio knowledge base."
 
         return (
             "AI service is currently unavailable. "
@@ -51,16 +40,12 @@ class AIService:
 
         documents = retrieve(message)
 
-        sources = [
-            document["source"]
-            for document in documents
-        ]
+        sources = [document["source"] for document in documents]
 
         if not documents:
             return {
                 "response": (
-                    "That information is not available in the "
-                    "portfolio knowledge base."
+                    "That information is not available in the portfolio knowledge base."
                 ),
                 "sources": [],
             }
@@ -73,8 +58,7 @@ class AIService:
         if not context:
             return {
                 "response": (
-                    "That information is not available in the "
-                    "portfolio knowledge base."
+                    "That information is not available in the portfolio knowledge base."
                 ),
                 "sources": [],
             }
@@ -88,12 +72,7 @@ class AIService:
                 "sources": sources,
             }
 
-        prompt = (
-            "Portfolio context:\n\n"
-            f"{context}\n\n"
-            "User question:\n\n"
-            f"{message}"
-        )
+        prompt = f"Portfolio context:\n\n{context}\n\nUser question:\n\n{message}"
 
         try:
             response = self.client.responses.create(
@@ -108,10 +87,7 @@ class AIService:
             }
 
         except Exception as exc:
-            print(
-                f"OpenAI API error: "
-                f"{type(exc).__name__}: {exc}"
-            )
+            print(f"OpenAI API error: {type(exc).__name__}: {exc}")
 
             return {
                 "response": self._fallback_response(

@@ -5,7 +5,6 @@ from app.rag.evaluation import EVALUATION_CASES
 from app.rag.ingest import load_chunks
 from app.rag.openai_embeddings import embedding_service
 
-
 EMBEDDING_MODEL = settings.embedding_model
 LIMIT = 3
 
@@ -20,29 +19,17 @@ THRESHOLDS = [
 ]
 
 
-
 def cosine_similarity(vector_a, vector_b):
-    dot_product = sum(
-        a * b
-        for a, b in zip(vector_a, vector_b)
-    )
+    dot_product = sum(a * b for a, b in zip(vector_a, vector_b, strict=True))
 
-    magnitude_a = sum(
-        a * a
-        for a in vector_a
-    ) ** 0.5
+    magnitude_a = sum(a * a for a in vector_a) ** 0.5
 
-    magnitude_b = sum(
-        b * b
-        for b in vector_b
-    ) ** 0.5
+    magnitude_b = sum(b * b for b in vector_b) ** 0.5
 
     if magnitude_a == 0 or magnitude_b == 0:
         return 0.0
 
-    return dot_product / (
-        magnitude_a * magnitude_b
-    )
+    return dot_product / (magnitude_a * magnitude_b)
 
 
 def retrieve_semantic(
@@ -82,20 +69,11 @@ def apply_threshold(
     results,
     threshold,
 ):
-    return [
-        result
-        for result in results
-        if result["score"] >= threshold
-    ]
+    return [result for result in results if result["score"] >= threshold]
 
 
 def unique_sources(results):
-    return list(
-        dict.fromkeys(
-            result["source"]
-            for result in results
-        )
-    )
+    return list(dict.fromkeys(result["source"] for result in results))
 
 
 def hit_at_k(results, expected_sources):
@@ -104,10 +82,7 @@ def hit_at_k(results, expected_sources):
     if not expected_sources:
         return len(results) == 0
 
-    return bool(
-        set(unique_sources(results))
-        & expected_sources
-    )
+    return bool(set(unique_sources(results)) & expected_sources)
 
 
 def source_recall_at_k(
@@ -119,13 +94,9 @@ def source_recall_at_k(
     if not expected_sources:
         return 0.0
 
-    retrieved = set(
-        unique_sources(results)
-    )
+    retrieved = set(unique_sources(results))
 
-    return len(
-        retrieved & expected_sources
-    ) / len(expected_sources)
+    return len(retrieved & expected_sources) / len(expected_sources)
 
 
 def source_precision_at_k(
@@ -133,16 +104,12 @@ def source_precision_at_k(
     expected_sources,
 ):
     expected_sources = set(expected_sources)
-    retrieved = set(
-        unique_sources(results)
-    )
+    retrieved = set(unique_sources(results))
 
     if not retrieved:
         return 0.0
 
-    return len(
-        retrieved & expected_sources
-    ) / len(retrieved)
+    return len(retrieved & expected_sources) / len(retrieved)
 
 
 def chunk_precision_at_k(
@@ -154,27 +121,18 @@ def chunk_precision_at_k(
     if not results:
         return 0.0
 
-    relevant = sum(
-        result["source"] in expected_sources
-        for result in results
-    )
+    relevant = sum(result["source"] in expected_sources for result in results)
 
     return relevant / len(results)
 
 
 def duplicate_rate(results):
-    sources = [
-        result["source"]
-        for result in results
-    ]
+    sources = [result["source"] for result in results]
 
     if not sources:
         return 0.0
 
-    return (
-        len(sources)
-        - len(set(sources))
-    ) / len(sources)
+    return (len(sources) - len(set(sources))) / len(sources)
 
 
 def reciprocal_rank(
@@ -217,9 +175,7 @@ def evaluate(
             results,
             expected_sources,
         ),
-        "duplicate_rate": duplicate_rate(
-            results
-        ),
+        "duplicate_rate": duplicate_rate(results),
         "mrr": reciprocal_rank(
             results,
             expected_sources,
@@ -228,21 +184,15 @@ def evaluate(
 
 
 def main():
-    print(
-        "SEMANTIC RELEVANCE THRESHOLD EXPERIMENT"
-    )
+    print("SEMANTIC RELEVANCE THRESHOLD EXPERIMENT")
     print("=" * 70)
     print()
 
-    print(
-        f"Embedding model: {EMBEDDING_MODEL}"
-    )
+    print(f"Embedding model: {EMBEDDING_MODEL}")
 
     chunks = load_chunks()
 
-    print(
-        f"Chunks evaluated: {len(chunks)}"
-    )
+    print(f"Chunks evaluated: {len(chunks)}")
 
     if not embedding_service.available:
         raise RuntimeError(
@@ -260,13 +210,14 @@ def main():
     embedded_chunks = []
 
     for index, (chunk, embedding) in enumerate(
-        zip(chunks, embeddings),
+        zip(
+            chunks,
+            embeddings,
+            strict=True,
+        ),
         start=1,
     ):
-        print(
-            f"  [{index}/{len(chunks)}] "
-            f"{chunk['source']}:{chunk['chunk']}"
-        )
+        print(f"  [{index}/{len(chunks)}] {chunk['source']}:{chunk['chunk']}")
 
         embedded_chunks.append(
             {
@@ -286,10 +237,7 @@ def main():
         EVALUATION_CASES,
         start=1,
     ):
-        print(
-            f"  [{index}/{len(EVALUATION_CASES)}] "
-            f"{case['query']}"
-        )
+        print(f"  [{index}/{len(EVALUATION_CASES)}] {case['query']}")
 
     print()
     print("=" * 70)
@@ -302,6 +250,7 @@ def main():
         for case, query_embedding in zip(
             EVALUATION_CASES,
             query_embeddings,
+            strict=True,
         ):
             raw_results = retrieve_semantic(
                 query_embedding,
@@ -321,65 +270,33 @@ def main():
 
             evaluations.append(metrics)
 
-        hit_rate = mean(
-            result["hit"]
-            for result in evaluations
-        )
+        hit_rate = mean(result["hit"] for result in evaluations)
 
-        source_recall = mean(
-            result["source_recall"]
-            for result in evaluations
-        )
+        source_recall = mean(result["source_recall"] for result in evaluations)
 
-        source_precision = mean(
-            result["source_precision"]
-            for result in evaluations
-        )
+        source_precision = mean(result["source_precision"] for result in evaluations)
 
-        chunk_precision = mean(
-            result["chunk_precision"]
-            for result in evaluations
-        )
+        chunk_precision = mean(result["chunk_precision"] for result in evaluations)
 
-        duplicate_rate = mean(
-            result["duplicate_rate"]
-            for result in evaluations
-        )
+        duplicate_rate = mean(result["duplicate_rate"] for result in evaluations)
 
-        mrr = mean(
-            result["mrr"]
-            for result in evaluations
-        )
+        mrr = mean(result["mrr"] for result in evaluations)
 
         print()
-        print(
-            f"Threshold >= {threshold:.2f}"
-        )
+        print(f"Threshold >= {threshold:.2f}")
         print("-" * 40)
 
-        print(
-            f"Hit Rate@3:          {hit_rate:.3f}"
-        )
+        print(f"Hit Rate@3:          {hit_rate:.3f}")
 
-        print(
-            f"Source Recall@3:     {source_recall:.3f}"
-        )
+        print(f"Source Recall@3:     {source_recall:.3f}")
 
-        print(
-            f"Source Precision@3:  {source_precision:.3f}"
-        )
+        print(f"Source Precision@3:  {source_precision:.3f}")
 
-        print(
-            f"Chunk Precision@3:   {chunk_precision:.3f}"
-        )
+        print(f"Chunk Precision@3:   {chunk_precision:.3f}")
 
-        print(
-            f"Duplicate Rate@3:    {duplicate_rate:.3f}"
-        )
+        print(f"Duplicate Rate@3:    {duplicate_rate:.3f}")
 
-        print(
-            f"MRR@3:               {mrr:.3f}"
-        )
+        print(f"MRR@3:               {mrr:.3f}")
 
     print()
     print("=" * 70)
@@ -393,13 +310,12 @@ def main():
 
     for threshold in THRESHOLDS:
         print()
-        print(
-            f"Threshold >= {threshold:.2f}"
-        )
+        print(f"Threshold >= {threshold:.2f}")
 
         for case, query_embedding in zip(
             EVALUATION_CASES,
             query_embeddings,
+            strict=True,
         ):
             if case["query"] not in out_of_scope_queries:
                 continue
@@ -415,18 +331,12 @@ def main():
                 threshold,
             )
 
-            print(
-                f"  {case['query']}"
-            )
+            print(f"  {case['query']}")
 
             if not filtered_results:
-                print(
-                    "    Result: REJECTED"
-                )
+                print("    Result: REJECTED")
             else:
-                print(
-                    "    Result: ACCEPTED"
-                )
+                print("    Result: ACCEPTED")
 
                 for result in filtered_results:
                     print(

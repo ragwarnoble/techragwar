@@ -83,7 +83,7 @@ def test_build_index_empty(monkeypatch):
     monkeypatch.setattr(
         semantic_retriever,
         "load_chunks",
-        lambda: [],
+        list,
     )
 
     result = semantic_retriever.build_index()

@@ -10,7 +10,6 @@ from .semantic_retriever import (
     retrieve_semantic,
 )
 
-
 SEMANTIC_THRESHOLD = 0.60
 
 CANDIDATE_K = 5
@@ -60,12 +59,7 @@ def _hybrid_tokens(text: str) -> set[str]:
         text.lower(),
     )
 
-    return {
-        word
-        for word in words
-        if len(word) > 2
-        and word not in HYBRID_STOP_WORDS
-    }
+    return {word for word in words if len(word) > 2 and word not in HYBRID_STOP_WORDS}
 
 
 def _hybrid_lexical_score(
@@ -80,9 +74,7 @@ def _hybrid_lexical_score(
     if not query_words:
         return 0
 
-    return len(
-        query_words & content_words
-    )
+    return len(query_words & content_words)
 
 
 def _lexical_candidates(
@@ -174,13 +166,9 @@ def _fuse_results(
     score scales.
     """
 
-    lexical_ranks = _rank_map(
-        lexical_results
-    )
+    lexical_ranks = _rank_map(lexical_results)
 
-    semantic_ranks = _rank_map(
-        semantic_results
-    )
+    semantic_ranks = _rank_map(semantic_results)
 
     candidates = {}
 
@@ -194,9 +182,7 @@ def _fuse_results(
             "source": result["source"],
             "content": result["content"],
             "chunk": result["chunk"],
-            "lexical_score": result[
-                "lexical_score"
-            ],
+            "lexical_score": result["lexical_score"],
             "semantic_score": 0.0,
         }
 
@@ -215,9 +201,7 @@ def _fuse_results(
                 "semantic_score": result["score"],
             }
         else:
-            candidates[key][
-                "semantic_score"
-            ] = result["score"]
+            candidates[key]["semantic_score"] = result["score"]
 
     fused = []
 
@@ -226,23 +210,16 @@ def _fuse_results(
         semantic_rank = semantic_ranks.get(key)
 
         lexical_rrf = (
-            LEXICAL_WEIGHT
-            / (RRF_K + lexical_rank)
-            if lexical_rank is not None
-            else 0.0
+            LEXICAL_WEIGHT / (RRF_K + lexical_rank) if lexical_rank is not None else 0.0
         )
 
         semantic_rrf = (
-            SEMANTIC_WEIGHT
-            / (RRF_K + semantic_rank)
+            SEMANTIC_WEIGHT / (RRF_K + semantic_rank)
             if semantic_rank is not None
             else 0.0
         )
 
-        rrf_score = (
-            lexical_rrf
-            + semantic_rrf
-        )
+        rrf_score = lexical_rrf + semantic_rrf
 
         fused.append(
             {
@@ -272,11 +249,7 @@ def _apply_semantic_gate(
 ) -> list[dict]:
     """Reject candidates below the semantic relevance threshold."""
 
-    return [
-        result
-        for result in results
-        if result["semantic_score"] >= threshold
-    ]
+    return [result for result in results if result["semantic_score"] >= threshold]
 
 
 def _select_distinct_sources(

@@ -5,13 +5,12 @@ from app.rag.evaluation import EVALUATION_CASES
 from app.rag.ingest import load_chunks
 from app.rag.openai_embeddings import embedding_service
 
-
 EMBEDDING_MODEL = settings.embedding_model
 LIMIT = 3
 
 
 def cosine_similarity(vector_a, vector_b):
-    dot_product = sum(a * b for a, b in zip(vector_a, vector_b))
+    dot_product = sum(a * b for a, b in zip(vector_a, vector_b, strict=True))
 
     magnitude_a = sum(a * a for a in vector_a) ** 0.5
     magnitude_b = sum(b * b for b in vector_b) ** 0.5
@@ -76,12 +75,7 @@ def diversify_results(results, limit=LIMIT):
 
 
 def unique_sources(results):
-    return list(
-        dict.fromkeys(
-            result["source"]
-            for result in results
-        )
-    )
+    return list(dict.fromkeys(result["source"] for result in results))
 
 
 def hit_at_k(results, expected_sources):
@@ -90,9 +84,7 @@ def hit_at_k(results, expected_sources):
     if not expected_sources:
         return len(results) == 0
 
-    return bool(
-        set(unique_sources(results)) & expected_sources
-    )
+    return bool(set(unique_sources(results)) & expected_sources)
 
 
 def source_recall_at_k(results, expected_sources):
@@ -122,26 +114,18 @@ def chunk_precision_at_k(results, expected_sources):
     if not results:
         return 0.0
 
-    relevant = sum(
-        result["source"] in expected_sources
-        for result in results
-    )
+    relevant = sum(result["source"] in expected_sources for result in results)
 
     return relevant / len(results)
 
 
 def duplicate_rate(results):
-    sources = [
-        result["source"]
-        for result in results
-    ]
+    sources = [result["source"] for result in results]
 
     if not sources:
         return 0.0
 
-    return (
-        len(sources) - len(set(sources))
-    ) / len(sources)
+    return (len(sources) - len(set(sources))) / len(sources)
 
 
 def reciprocal_rank(results, expected_sources):
@@ -187,35 +171,17 @@ def print_metrics(title, results):
     print(title)
     print("-" * len(title))
 
-    print(
-        f"Hit Rate@3:          "
-        f"{mean(r['hit'] for r in results):.3f}"
-    )
+    print(f"Hit Rate@3:          {mean(r['hit'] for r in results):.3f}")
 
-    print(
-        f"Source Recall@3:     "
-        f"{mean(r['source_recall'] for r in results):.3f}"
-    )
+    print(f"Source Recall@3:     {mean(r['source_recall'] for r in results):.3f}")
 
-    print(
-        f"Source Precision@3:  "
-        f"{mean(r['source_precision'] for r in results):.3f}"
-    )
+    print(f"Source Precision@3:  {mean(r['source_precision'] for r in results):.3f}")
 
-    print(
-        f"Chunk Precision@3:   "
-        f"{mean(r['chunk_precision'] for r in results):.3f}"
-    )
+    print(f"Chunk Precision@3:   {mean(r['chunk_precision'] for r in results):.3f}")
 
-    print(
-        f"Duplicate Rate@3:    "
-        f"{mean(r['duplicate_rate'] for r in results):.3f}"
-    )
+    print(f"Duplicate Rate@3:    {mean(r['duplicate_rate'] for r in results):.3f}")
 
-    print(
-        f"MRR@3:               "
-        f"{mean(r['reciprocal_rank'] for r in results):.3f}"
-    )
+    print(f"MRR@3:               {mean(r['reciprocal_rank'] for r in results):.3f}")
 
 
 def main():
@@ -244,13 +210,10 @@ def main():
     embedded_chunks = []
 
     for index, (chunk, embedding) in enumerate(
-        zip(chunks, embeddings),
+        zip(chunks, embeddings, strict=True),
         start=1,
     ):
-        print(
-            f"  [{index}/{len(chunks)}] "
-            f"{chunk['source']}:{chunk['chunk']}"
-        )
+        print(f"  [{index}/{len(chunks)}] {chunk['source']}:{chunk['chunk']}")
 
         embedded_chunks.append(
             {
@@ -271,18 +234,11 @@ def main():
         start=1,
     ):
         query = case["query"]
-        expected_sources = set(
-            case["expected_sources"]
-        )
+        expected_sources = set(case["expected_sources"])
 
-        print(
-            f"[{index}/{len(EVALUATION_CASES)}] "
-            f"{query}"
-        )
+        print(f"[{index}/{len(EVALUATION_CASES)}] {query}")
 
-        query_embedding = embedding_service.embed_query(
-            query
-        )
+        query_embedding = embedding_service.embed_query(query)
 
         raw = retrieve_raw(
             query_embedding,
@@ -306,19 +262,11 @@ def main():
         )
 
         raw_results.append(raw_metrics)
-        diversified_results.append(
-            diversified_metrics
-        )
+        diversified_results.append(diversified_metrics)
 
-        print(
-            f"  Raw:         "
-            f"{[r['source'] for r in raw]}"
-        )
+        print(f"  Raw:         {[r['source'] for r in raw]}")
 
-        print(
-            f"  Diversified: "
-            f"{[r['source'] for r in diversified]}"
-        )
+        print(f"  Diversified: {[r['source'] for r in diversified]}")
 
         print()
 
@@ -356,15 +304,9 @@ def main():
     ]
 
     for label, key in metrics:
-        raw_value = mean(
-            result[key]
-            for result in raw_results
-        )
+        raw_value = mean(result[key] for result in raw_results)
 
-        diversified_value = mean(
-            result[key]
-            for result in diversified_results
-        )
+        diversified_value = mean(result[key] for result in diversified_results)
 
         delta = diversified_value - raw_value
 
