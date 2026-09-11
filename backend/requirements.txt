@@ -5,6 +5,4 @@ pydantic-settings
 SQLAlchemy
 email-validator
 httpx
-pytest
-pytest-cov
 openai
