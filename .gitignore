@@ -12,28 +12,28 @@ venv/
 env/
 ENV/
 
-# SQLite / local databases
+# Local databases
 *.db
 *.sqlite
 *.sqlite3
+
+# Environment files
+.env
+.env.*
+!.env.example
 
 # Coverage
 .coverage
 htmlcov/
 coverage.xml
 
-# OS
-.DS_Store
-Thumbs.db
-
 # IDE
 .vscode/
 .idea/
 
-# Environment
-.env
-.env.*
-!.env.example
+# OS
+.DS_Store
+Thumbs.db
 
 # Node
 node_modules/
@@ -43,75 +43,7 @@ build/
 # Logs
 *.log
 
-# RAG / generated artifacts
-backend/data/index/
-backend/data/vectorstore/
-backend/data/embeddings/.DS_Store
-Thumbs.db
-.vscode/
-.env
-.env.*
-!.env.example
-node_modules/
-dist/
-build/
-*.log
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Local databases
-*.db
-*.sqlite
-*.sqlite3
-
-# Coverage
-.coverage
-htmlcov/
-coverage.xml
-
 # RAG generated artifacts
 backend/data/index/
 backend/data/vectorstore/
 backend/data/embeddings/
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Local databases
-*.db
-*.sqlite
-*.sqlite3
-
-# Coverage
-.coverage
-htmlcov/
-coverage.xml
-
-# RAG generated artifacts
-backend/data/index/
-backend/data/vectorstore/
-backend/data/embeddings/
-backend/.env
