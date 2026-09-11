@@ -8,11 +8,7 @@ from .hybrid_retriever import (
     build_embedded_chunks,
     retrieve_hybrid,
 )
-from .semantic_evaluation import (
-    get_client,
-    embed_text,
-    retrieve_semantic,
-)
+from .semantic_retriever import retrieve_semantic
 from .retriever import retrieve
 
 
@@ -204,20 +200,9 @@ def main() -> None:
         f"{SEMANTIC_WEIGHT:.2f}"
     )
 
-    print("\nInitializing Gemini client...")
+    print("\nBuilding semantic knowledge-base index...")
 
-    client = get_client()
-
-    if client is None:
-        raise RuntimeError(
-            "Gemini client unavailable"
-        )
-
-    print("\nEmbedding knowledge base chunks...")
-
-    embedded_chunks = build_embedded_chunks(
-        client
-    )
+    embedded_chunks = build_embedded_chunks()
 
     print(
         f"  Embedded "
@@ -253,13 +238,8 @@ def main() -> None:
         query: str,
     ) -> list[dict]:
 
-        query_embedding = embed_text(
-            client,
-            query,
-        )
-
         return retrieve_semantic(
-            query_embedding,
+            query,
             embedded_chunks,
             limit=LIMIT,
         )
@@ -285,7 +265,6 @@ def main() -> None:
         return retrieve_hybrid(
             query,
             embedded_chunks,
-            client,
             limit=LIMIT,
         )
 

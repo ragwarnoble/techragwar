@@ -7,5 +7,4 @@ email-validator
 httpx
 pytest
 pytest-cov
-sentence-transformers
 openai

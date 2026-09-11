@@ -1,35 +1,14 @@
 from statistics import mean
 
-from app.config import Settings
+from app.config import settings
 from app.rag.evaluation import EVALUATION_CASES
 from app.rag.ingest import load_chunks
+from app.rag.openai_embeddings import embedding_service
 
 
-EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_MODEL = settings.embedding_model
 LIMIT = 3
 
-
-def get_client():
-    from google import genai
-
-    settings = Settings()
-
-    if not settings.google_api_key:
-        raise RuntimeError(
-            "GOOGLE_API_KEY is not configured. "
-            "Set it in backend/.env."
-        )
-
-    return genai.Client(api_key=settings.google_api_key)
-
-
-def embed_text(client, text):
-    response = client.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=text,
-    )
-
-    return response.embeddings[0].values
 
 
 def cosine_similarity(vector_a, vector_b):
@@ -203,16 +182,11 @@ def retrieve_semantic(
 
 
 def evaluate_case(
-    client,
+    query_embedding,
     embedded_chunks,
     query,
     expected_sources,
 ):
-    query_embedding = embed_text(
-        client,
-        query,
-    )
-
     retrieved = retrieve_semantic(
         query_embedding,
         embedded_chunks,
@@ -350,28 +324,28 @@ def main():
         f"Chunks evaluated: {len(chunks)}"
     )
 
-    print()
-    print("Initializing Gemini client...")
-
-    client = get_client()
+    if not embedding_service.available:
+        raise RuntimeError(
+            "OpenAI embedding service is not configured. "
+            "Check OPENAI_API_KEY in backend/.env."
+        )
 
     print()
     print("Embedding knowledge base chunks...")
 
+    embeddings = embedding_service.embed_documents(
+        [chunk["content"] for chunk in chunks]
+    )
+
     embedded_chunks = []
 
-    for index, chunk in enumerate(
-        chunks,
+    for index, (chunk, embedding) in enumerate(
+        zip(chunks, embeddings),
         start=1,
     ):
         print(
             f"  [{index}/{len(chunks)}] "
             f"{chunk['source']}:{chunk['chunk']}"
-        )
-
-        embedding = embed_text(
-            client,
-            chunk["content"],
         )
 
         embedded_chunks.append(
@@ -383,6 +357,10 @@ def main():
 
     print()
     print("Embedding evaluation queries...")
+
+    query_embeddings = embedding_service.embed_documents(
+        [case["query"] for case in EVALUATION_CASES]
+    )
 
     for index, case in enumerate(
         EVALUATION_CASES,
@@ -400,9 +378,12 @@ def main():
 
     results = []
 
-    for case in EVALUATION_CASES:
+    for case, query_embedding in zip(
+        EVALUATION_CASES,
+        query_embeddings,
+    ):
         result = evaluate_case(
-            client,
+            query_embedding,
             embedded_chunks,
             case["query"],
             case["expected_sources"],

@@ -1,3 +1,5 @@
+"""Compare lexical and semantic RAG retrieval."""
+
 from .evaluation import (
     EVALUATION_CASES,
     precision_at_k,
@@ -5,10 +7,8 @@ from .evaluation import (
     reciprocal_rank,
 )
 from .retriever import retrieve
-from .ingest import load_chunks
-from .semantic_evaluation import (
-    get_client,
-    embed_text,
+from .semantic_retriever import (
+    build_index,
     retrieve_semantic,
 )
 
@@ -17,45 +17,32 @@ SEMANTIC_THRESHOLD = 0.60
 TOP_K = 3
 
 
-def build_embedded_chunks(client) -> list[dict]:
-    """Embed the knowledge base once."""
-    chunks = load_chunks()
-    embedded_chunks = []
-
+def build_embedded_chunks() -> list[dict]:
+    """Build the semantic knowledge-base index once."""
     print("\nEmbedding knowledge base chunks...")
 
-    for index, chunk in enumerate(chunks, start=1):
+    embedded_chunks = build_index()
+
+    for index, chunk in enumerate(
+        embedded_chunks,
+        start=1,
+    ):
         print(
-            f"  [{index}/{len(chunks)}] "
+            f"  [{index}/{len(embedded_chunks)}] "
             f"{chunk['source']}:{chunk['chunk']}"
         )
-
-        embedding = embed_text(
-            client,
-            chunk["content"],
-        )
-
-        embedded_chunks.append({
-            **chunk,
-            "embedding": embedding,
-        })
 
     return embedded_chunks
 
 
 def semantic_results(
-    client,
     query: str,
     embedded_chunks: list[dict],
 ) -> list[dict]:
-    """Embed a query and perform semantic retrieval."""
-    query_embedding = embed_text(
-        client,
-        query,
-    )
+    """Perform semantic retrieval for a query."""
 
     return retrieve_semantic(
-        query_embedding,
+        query,
         embedded_chunks,
         limit=TOP_K,
     )
@@ -66,6 +53,7 @@ def apply_threshold(
     threshold: float,
 ) -> list[dict]:
     """Keep only results meeting the semantic relevance threshold."""
+
     return [
         result
         for result in results
@@ -106,6 +94,7 @@ def metrics_for_case(
 
 def evaluate_lexical() -> dict:
     """Evaluate the existing lexical retriever."""
+
     cases = []
 
     for case in EVALUATION_CASES:
@@ -119,12 +108,14 @@ def evaluate_lexical() -> dict:
             case["expected_sources"],
         )
 
-        cases.append({
-            "query": case["query"],
-            "expected": case["expected_sources"],
-            "results": results,
-            **metrics,
-        })
+        cases.append(
+            {
+                "query": case["query"],
+                "expected": case["expected_sources"],
+                "results": results,
+                **metrics,
+            }
+        )
 
     return {
         "name": "lexical",
@@ -133,15 +124,14 @@ def evaluate_lexical() -> dict:
 
 
 def evaluate_semantic(
-    client,
     embedded_chunks: list[dict],
 ) -> dict:
     """Evaluate semantic retrieval with relevance threshold."""
+
     cases = []
 
     for case in EVALUATION_CASES:
         results = semantic_results(
-            client,
             case["query"],
             embedded_chunks,
         )
@@ -156,12 +146,14 @@ def evaluate_semantic(
             case["expected_sources"],
         )
 
-        cases.append({
-            "query": case["query"],
-            "expected": case["expected_sources"],
-            "results": results,
-            **metrics,
-        })
+        cases.append(
+            {
+                "query": case["query"],
+                "expected": case["expected_sources"],
+                "results": results,
+                **metrics,
+            }
+        )
 
     return {
         "name": "semantic",
@@ -171,24 +163,30 @@ def evaluate_semantic(
 
 def aggregate(evaluation: dict) -> dict:
     """Aggregate metrics across evaluation cases."""
+
     cases = evaluation["cases"]
+
+    if not cases:
+        return {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "precision": 0.0,
+            "mrr": 0.0,
+        }
 
     return {
         "hit_rate": sum(
             case["hit"]
             for case in cases
         ) / len(cases),
-
         "recall": sum(
             case["recall"]
             for case in cases
         ) / len(cases),
-
         "precision": sum(
             case["precision"]
             for case in cases
         ) / len(cases),
-
         "mrr": sum(
             case["mrr"]
             for case in cases
@@ -198,6 +196,7 @@ def aggregate(evaluation: dict) -> dict:
 
 def print_summary(evaluation: dict) -> None:
     """Print aggregate retrieval metrics."""
+
     metrics = aggregate(evaluation)
 
     print(
@@ -332,6 +331,8 @@ def print_oos_analysis(
 
 
 def main() -> None:
+    """Run the lexical-versus-semantic comparison."""
+
     print("LEXICAL VS SEMANTIC RETRIEVAL")
     print("=" * 70)
 
@@ -341,26 +342,13 @@ def main() -> None:
         f"{SEMANTIC_THRESHOLD:.2f}"
     )
 
-    print("\nInitializing Gemini client...")
-
-    client = get_client()
-
-    if client is None:
-        raise RuntimeError(
-            "Gemini client could not be initialized. "
-            "Check GOOGLE_API_KEY in .env."
-        )
-
-    embedded_chunks = build_embedded_chunks(
-        client
-    )
+    embedded_chunks = build_embedded_chunks()
 
     print("\nEvaluating lexical retrieval...")
     lexical = evaluate_lexical()
 
     print("\nEvaluating semantic retrieval...")
     semantic = evaluate_semantic(
-        client,
         embedded_chunks,
     )
 

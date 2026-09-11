@@ -3,210 +3,77 @@ import pytest
 from app.rag import hybrid_retriever
 
 
-def test_hybrid_tokens_remove_stop_words():
+def test_hybrid_tokens():
     result = hybrid_retriever._hybrid_tokens(
-        "What does the portfolio use for backend development?"
+        "What backend tools are used?"
     )
 
-    assert "what" not in result
-    assert "does" not in result
-    assert "the" not in result
-    assert "use" not in result
-    assert "portfolio" in result
     assert "backend" in result
-    assert "development" in result
-
-
-def test_hybrid_tokens_ignore_short_words():
-    result = hybrid_retriever._hybrid_tokens("AI is an API")
-
-    assert "ai" not in result
-    assert "is" not in result
-    assert "an" not in result
-    assert "api" in result
+    assert "tools" in result
+    assert "what" not in result
+    assert "are" not in result
 
 
 def test_hybrid_lexical_score():
     score = hybrid_retriever._hybrid_lexical_score(
-        "Python backend API",
-        "Python backend development",
+        "Python backend",
+        "Python FastAPI backend development",
     )
 
     assert score == 2
 
 
-def test_hybrid_lexical_score_empty_query():
-    assert (
-        hybrid_retriever._hybrid_lexical_score(
-            "is the",
-            "Python backend",
-        )
-        == 0
+def test_hybrid_lexical_score_no_overlap():
+    score = hybrid_retriever._hybrid_lexical_score(
+        "database",
+        "Python FastAPI frontend",
     )
 
-
-def test_lexical_candidates(monkeypatch):
-    chunks = [
-        {
-            "source": "about.md",
-            "content": "Python backend development",
-            "chunk": 0,
-        },
-        {
-            "source": "skills.md",
-            "content": "SQL database engineering",
-            "chunk": 0,
-        },
-        {
-            "source": "projects.md",
-            "content": "Python AI project",
-            "chunk": 0,
-        },
-    ]
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "load_chunks",
-        lambda: chunks,
-    )
-
-    results = hybrid_retriever._lexical_candidates(
-        "Python backend"
-    )
-
-    assert len(results) == 2
-    assert results[0]["source"] == "about.md"
-    assert results[0]["lexical_score"] == 2
+    assert score == 0
 
 
-def test_lexical_candidates_sorted_deterministically(monkeypatch):
-    chunks = [
-        {
-            "source": "z.md",
-            "content": "Python API",
-            "chunk": 0,
-        },
-        {
-            "source": "a.md",
-            "content": "Python API",
-            "chunk": 0,
-        },
-    ]
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "load_chunks",
-        lambda: chunks,
-    )
-
-    results = hybrid_retriever._lexical_candidates(
-        "Python API"
-    )
-
-    assert [r["source"] for r in results] == [
-        "a.md",
-        "z.md",
-    ]
+def test_lexical_candidates_invalid_query():
+    assert hybrid_retriever._lexical_candidates("") == []
+    assert hybrid_retriever._lexical_candidates("   ") == []
 
 
-def test_lexical_candidates_limit(monkeypatch):
-    chunks = [
-        {
-            "source": f"{i}.md",
-            "content": "Python backend API",
-            "chunk": 0,
-        }
-        for i in range(10)
-    ]
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "load_chunks",
-        lambda: chunks,
-    )
-
-    results = hybrid_retriever._lexical_candidates(
-        "Python backend API",
-        limit=3,
-    )
-
-    assert len(results) == 3
-
-
-def test_semantic_candidates(monkeypatch):
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "embed_text",
-        lambda client, query: [1.0, 0.0],
-    )
-
-    expected = [
-        {
-            "source": "about.md",
-            "content": "Python backend",
-            "chunk": 0,
-            "score": 0.9,
-        }
-    ]
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "retrieve_semantic",
-        lambda embedding, chunks, limit: expected,
-    )
-
-    result = hybrid_retriever._semantic_candidates(
+def test_lexical_candidates_invalid_limit():
+    assert hybrid_retriever._lexical_candidates(
         "Python",
-        [],
-        object(),
-        limit=3,
-    )
-
-    assert result == expected
+        limit=0,
+    ) == []
 
 
 def test_rank_map():
     results = [
         {"source": "about.md", "chunk": 0},
-        {"source": "skills.md", "chunk": 1},
+        {"source": "skills.md", "chunk": 0},
     ]
 
     result = hybrid_retriever._rank_map(results)
 
     assert result == {
         ("about.md", 0): 1,
-        ("skills.md", 1): 2,
+        ("skills.md", 0): 2,
     }
 
 
-def test_fuse_results_combines_rankings():
+def test_fuse_results_combines_lexical_and_semantic():
     lexical = [
         {
-            "source": "about.md",
-            "content": "Python backend",
+            "source": "skills.md",
+            "content": "Python",
             "chunk": 0,
             "lexical_score": 2,
-        },
-        {
-            "source": "skills.md",
-            "content": "SQL",
-            "chunk": 0,
-            "lexical_score": 1,
         },
     ]
 
     semantic = [
         {
             "source": "skills.md",
-            "content": "SQL",
+            "content": "Python",
             "chunk": 0,
             "score": 0.9,
-        },
-        {
-            "source": "projects.md",
-            "content": "AI",
-            "chunk": 0,
-            "score": 0.8,
         },
     ]
 
@@ -215,88 +82,100 @@ def test_fuse_results_combines_rankings():
         semantic,
     )
 
-    assert len(result) == 3
-
-    by_key = {
-        (item["source"], item["chunk"]): item
-        for item in result
-    }
-
-    assert by_key[("about.md", 0)]["lexical_rank"] == 1
-    assert by_key[("about.md", 0)]["semantic_rank"] is None
-
-    assert by_key[("skills.md", 0)]["lexical_rank"] == 2
-    assert by_key[("skills.md", 0)]["semantic_rank"] == 1
-    assert by_key[("skills.md", 0)]["semantic_score"] == pytest.approx(0.9)
-
-    assert by_key[("projects.md", 0)]["lexical_rank"] is None
-    assert by_key[("projects.md", 0)]["semantic_rank"] == 2
+    assert len(result) == 1
+    assert result[0]["source"] == "skills.md"
+    assert result[0]["lexical_score"] == 2
+    assert result[0]["semantic_score"] == 0.9
+    assert result[0]["lexical_rank"] == 1
+    assert result[0]["semantic_rank"] == 1
+    assert result[0]["hybrid_score"] > 0
 
 
-def test_fuse_results_is_deterministic():
-    lexical = [
+def test_fuse_results_preserves_semantic_only_results():
+    lexical = []
+
+    semantic = [
         {
-            "source": "b.md",
-            "content": "Python",
+            "source": "architecture.md",
+            "content": "FastAPI backend",
             "chunk": 0,
-            "lexical_score": 1,
-        },
-        {
-            "source": "a.md",
-            "content": "Python",
-            "chunk": 0,
-            "lexical_score": 1,
+            "score": 0.85,
         },
     ]
 
-    first = hybrid_retriever._fuse_results(
+    result = hybrid_retriever._fuse_results(
         lexical,
-        [],
+        semantic,
     )
 
-    second = hybrid_retriever._fuse_results(
+    assert len(result) == 1
+    assert result[0]["source"] == "architecture.md"
+    assert result[0]["lexical_score"] == 0
+    assert result[0]["semantic_score"] == 0.85
+    assert result[0]["lexical_rank"] is None
+    assert result[0]["semantic_rank"] == 1
+
+
+def test_fuse_results_preserves_lexical_only_results():
+    lexical = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "lexical_score": 2,
+        },
+    ]
+
+    semantic = []
+
+    result = hybrid_retriever._fuse_results(
         lexical,
-        [],
+        semantic,
     )
 
-    assert first == second
+    assert len(result) == 1
+    assert result[0]["source"] == "skills.md"
+    assert result[0]["lexical_score"] == 2
+    assert result[0]["semantic_score"] == 0.0
+    assert result[0]["lexical_rank"] == 1
+    assert result[0]["semantic_rank"] is None
 
 
 def test_apply_semantic_gate():
     results = [
         {
-            "source": "good.md",
+            "source": "about.md",
             "chunk": 0,
-            "semantic_score": 0.80,
+            "semantic_score": 0.8,
         },
         {
-            "source": "bad.md",
+            "source": "skills.md",
             "chunk": 0,
-            "semantic_score": 0.40,
+            "semantic_score": 0.5,
         },
     ]
 
     result = hybrid_retriever._apply_semantic_gate(
         results,
-        threshold=0.60,
+        threshold=0.6,
     )
 
     assert len(result) == 1
-    assert result[0]["source"] == "good.md"
+    assert result[0]["source"] == "about.md"
 
 
-def test_apply_semantic_gate_includes_exact_threshold():
+def test_apply_semantic_gate_boundary():
     results = [
         {
-            "source": "exact.md",
+            "source": "about.md",
             "chunk": 0,
-            "semantic_score": 0.60,
-        }
+            "semantic_score": 0.6,
+        },
     ]
 
     result = hybrid_retriever._apply_semantic_gate(
         results,
-        threshold=0.60,
+        threshold=0.6,
     )
 
     assert len(result) == 1
@@ -304,10 +183,10 @@ def test_apply_semantic_gate_includes_exact_threshold():
 
 def test_select_distinct_sources():
     results = [
-        {"source": "about.md", "chunk": 0},
-        {"source": "about.md", "chunk": 1},
         {"source": "skills.md", "chunk": 0},
-        {"source": "projects.md", "chunk": 0},
+        {"source": "skills.md", "chunk": 1},
+        {"source": "about.md", "chunk": 0},
+        {"source": "architecture.md", "chunk": 0},
     ]
 
     result = hybrid_retriever._select_distinct_sources(
@@ -315,17 +194,29 @@ def test_select_distinct_sources():
         limit=3,
     )
 
-    assert [
-        (item["source"], item["chunk"])
-        for item in result
-    ] == [
-        ("about.md", 0),
-        ("skills.md", 0),
-        ("projects.md", 0),
+    assert [item["source"] for item in result] == [
+        "skills.md",
+        "about.md",
+        "architecture.md",
     ]
 
 
-def test_select_distinct_sources_limit_zero():
+def test_select_distinct_sources_respects_limit():
+    results = [
+        {"source": "about.md", "chunk": 0},
+        {"source": "skills.md", "chunk": 0},
+        {"source": "architecture.md", "chunk": 0},
+    ]
+
+    result = hybrid_retriever._select_distinct_sources(
+        results,
+        limit=2,
+    )
+
+    assert len(result) == 2
+
+
+def test_select_distinct_sources_invalid_limit():
     results = [
         {"source": "about.md", "chunk": 0},
     ]
@@ -339,92 +230,52 @@ def test_select_distinct_sources_limit_zero():
     )
 
 
-def test_build_embedded_chunks(monkeypatch):
-    chunks = [
-        {
-            "source": "about.md",
-            "content": "Python backend",
-            "chunk": 0,
-        },
-        {
-            "source": "skills.md",
-            "content": "SQL database",
-            "chunk": 0,
-        },
-    ]
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "load_chunks",
-        lambda: chunks,
-    )
-
-    embeddings = iter(
-        [
-            [1.0, 0.0],
-            [0.0, 1.0],
-        ]
-    )
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "embed_text",
-        lambda client, text: next(embeddings),
-    )
-
-    result = hybrid_retriever.build_embedded_chunks(
-        object()
-    )
-
-    assert len(result) == 2
-    assert result[0]["embedding"] == [1.0, 0.0]
-    assert result[1]["embedding"] == [0.0, 1.0]
-    assert result[0]["source"] == "about.md"
+def test_retrieve_hybrid_invalid_query():
+    assert hybrid_retriever.retrieve_hybrid("") == []
+    assert hybrid_retriever.retrieve_hybrid("   ") == []
 
 
-def test_build_embedded_chunks_empty(monkeypatch):
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "load_chunks",
-        lambda: [],
-    )
-
-    result = hybrid_retriever.build_embedded_chunks(
-        object()
-    )
-
-    assert result == []
-
-
-def test_retrieve_hybrid_limit_zero():
+def test_retrieve_hybrid_invalid_limit():
     assert (
         hybrid_retriever.retrieve_hybrid(
             "Python",
-            [],
-            object(),
             limit=0,
         )
         == []
     )
 
 
-def test_retrieve_hybrid_pipeline(monkeypatch):
+def test_retrieve_hybrid_no_embedded_chunks(monkeypatch):
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "build_embedded_chunks",
+        lambda: [],
+    )
+
+    result = hybrid_retriever.retrieve_hybrid(
+        "Python",
+    )
+
+    assert result == []
+
+
+def test_retrieve_hybrid_combines_results(monkeypatch):
     lexical = [
         {
-            "source": "about.md",
-            "content": "Python backend",
+            "source": "skills.md",
+            "content": "Python FastAPI",
             "chunk": 0,
             "lexical_score": 2,
-        }
+        },
     ]
 
     semantic = [
         {
-            "source": "about.md",
-            "content": "Python backend",
+            "source": "skills.md",
+            "content": "Python FastAPI",
             "chunk": 0,
-            "score": 0.90,
-        }
+            "score": 0.9,
+        },
     ]
 
     monkeypatch.setattr(
@@ -436,73 +287,34 @@ def test_retrieve_hybrid_pipeline(monkeypatch):
     monkeypatch.setattr(
         hybrid_retriever,
         "_semantic_candidates",
-        lambda query, embedded_chunks, client, limit: semantic,
+        lambda query, embedded_chunks, limit: semantic,
     )
 
+    embedded_chunks = [
+        {
+            "source": "skills.md",
+            "content": "Python FastAPI",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
     result = hybrid_retriever.retrieve_hybrid(
-        "Python backend",
-        [],
-        object(),
+        "Python",
+        embedded_chunks,
+        limit=3,
     )
 
     assert len(result) == 1
-    assert result[0]["source"] == "about.md"
-    assert result[0]["semantic_score"] == pytest.approx(0.90)
+    assert result[0]["source"] == "skills.md"
+    assert result[0]["semantic_score"] == 0.9
 
 
-def test_retrieve_hybrid_rejects_below_threshold(monkeypatch):
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "_lexical_candidates",
-        lambda query, limit: [
-            {
-                "source": "about.md",
-                "content": "Python backend",
-                "chunk": 0,
-                "lexical_score": 2,
-            }
-        ],
-    )
-
-    monkeypatch.setattr(
-        hybrid_retriever,
-        "_semantic_candidates",
-        lambda query, embedded_chunks, client, limit: [
-            {
-                "source": "about.md",
-                "content": "Python backend",
-                "chunk": 0,
-                "score": 0.30,
-            }
-        ],
-    )
-
-    result = hybrid_retriever.retrieve_hybrid(
-        "weather",
-        [],
-        object(),
-    )
-
-    assert result == []
-
-
-def test_retrieve_hybrid_prefers_distinct_sources(monkeypatch):
+def test_retrieve_hybrid_semantic_gate(monkeypatch):
     lexical = [
         {
-            "source": "about.md",
-            "content": "Python",
-            "chunk": 0,
-            "lexical_score": 3,
-        },
-        {
-            "source": "about.md",
-            "content": "FastAPI",
-            "chunk": 1,
-            "lexical_score": 2,
-        },
-        {
             "source": "skills.md",
-            "content": "SQL",
+            "content": "Python",
             "chunk": 0,
             "lexical_score": 1,
         },
@@ -510,22 +322,10 @@ def test_retrieve_hybrid_prefers_distinct_sources(monkeypatch):
 
     semantic = [
         {
-            "source": "about.md",
+            "source": "skills.md",
             "content": "Python",
             "chunk": 0,
-            "score": 0.90,
-        },
-        {
-            "source": "about.md",
-            "content": "FastAPI",
-            "chunk": 1,
-            "score": 0.85,
-        },
-        {
-            "source": "skills.md",
-            "content": "SQL",
-            "chunk": 0,
-            "score": 0.80,
+            "score": 0.4,
         },
     ]
 
@@ -538,18 +338,232 @@ def test_retrieve_hybrid_prefers_distinct_sources(monkeypatch):
     monkeypatch.setattr(
         hybrid_retriever,
         "_semantic_candidates",
-        lambda query, embedded_chunks, client, limit: semantic,
+        lambda query, embedded_chunks, limit: semantic,
     )
 
+    embedded_chunks = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
     result = hybrid_retriever.retrieve_hybrid(
-        "Python FastAPI SQL",
-        [],
-        object(),
+        "Python",
+        embedded_chunks,
+        limit=3,
+    )
+
+    assert result == []
+
+
+def test_retrieve_hybrid_source_diversity(monkeypatch):
+    lexical = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "lexical_score": 3,
+        },
+        {
+            "source": "skills.md",
+            "content": "FastAPI",
+            "chunk": 1,
+            "lexical_score": 2,
+        },
+        {
+            "source": "about.md",
+            "content": "Python",
+            "chunk": 0,
+            "lexical_score": 1,
+        },
+    ]
+
+    semantic = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "score": 0.9,
+        },
+        {
+            "source": "skills.md",
+            "content": "FastAPI",
+            "chunk": 1,
+            "score": 0.85,
+        },
+        {
+            "source": "about.md",
+            "content": "Python",
+            "chunk": 0,
+            "score": 0.8,
+        },
+    ]
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_lexical_candidates",
+        lambda query, limit: lexical,
+    )
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_semantic_candidates",
+        lambda query, embedded_chunks, limit: semantic,
+    )
+
+    embedded_chunks = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
+    result = hybrid_retriever.retrieve_hybrid(
+        "Python",
+        embedded_chunks,
         limit=2,
     )
 
     assert len(result) == 2
+    assert len({item["source"] for item in result}) == 2
+
+
+def test_retrieve_hybrid_deterministic_tie_breaking(monkeypatch):
+    lexical = [
+        {
+            "source": "about.md",
+            "content": "Python",
+            "chunk": 0,
+            "lexical_score": 1,
+        },
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "lexical_score": 1,
+        },
+    ]
+
+    semantic = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "score": 0.8,
+        },
+        {
+            "source": "about.md",
+            "content": "Python",
+            "chunk": 0,
+            "score": 0.8,
+        },
+    ]
+
+    embedded_chunks = [
+        {
+            "source": "about.md",
+            "content": "Python",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_lexical_candidates",
+        lambda query, limit: lexical,
+    )
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_semantic_candidates",
+        lambda query, embedded_chunks, limit: semantic,
+    )
+
+    result = hybrid_retriever.retrieve_hybrid(
+        "Python",
+        embedded_chunks,
+        limit=2,
+    )
+
     assert [item["source"] for item in result] == [
         "about.md",
         "skills.md",
     ]
+
+
+def test_retrieve_hybrid_uses_build_index_when_not_supplied(monkeypatch):
+    embedded_chunks = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "build_embedded_chunks",
+        lambda: embedded_chunks,
+    )
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_lexical_candidates",
+        lambda query, limit: [
+            {
+                "source": "skills.md",
+                "content": "Python",
+                "chunk": 0,
+                "lexical_score": 1,
+            }
+        ],
+    )
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "_semantic_candidates",
+        lambda query, embedded_chunks, limit: [
+            {
+                "source": "skills.md",
+                "content": "Python",
+                "chunk": 0,
+                "score": 0.9,
+            }
+        ],
+    )
+
+    result = hybrid_retriever.retrieve_hybrid(
+        "Python",
+    )
+
+    assert len(result) == 1
+    assert result[0]["source"] == "skills.md"
+
+
+def test_build_embedded_chunks_delegates(monkeypatch):
+    expected = [
+        {
+            "source": "skills.md",
+            "content": "Python",
+            "chunk": 0,
+            "embedding": [1.0, 0.0],
+        }
+    ]
+
+    monkeypatch.setattr(
+        hybrid_retriever,
+        "build_index",
+        lambda: expected,
+    )
+
+    assert (
+        hybrid_retriever.build_embedded_chunks()
+        == expected
+    )

@@ -1,33 +1,13 @@
 from statistics import mean
 
-from app.config import Settings
+from app.config import settings
 from app.rag.evaluation import EVALUATION_CASES
 from app.rag.ingest import load_chunks
+from app.rag.openai_embeddings import embedding_service
 
 
-EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_MODEL = settings.embedding_model
 LIMIT = 3
-
-
-def get_client():
-    from google import genai
-
-    settings = Settings()
-
-    if not settings.google_api_key:
-        raise RuntimeError(
-            "GOOGLE_API_KEY is not configured. Set it in backend/.env."
-        )
-
-    return genai.Client(api_key=settings.google_api_key)
-
-
-def embed_text(client, text):
-    response = client.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=text,
-    )
-    return response.embeddings[0].values
 
 
 def cosine_similarity(vector_a, vector_b):
@@ -248,16 +228,25 @@ def main():
 
     print(f"Chunks evaluated: {len(chunks)}")
     print()
-    print("Initializing Gemini client...")
-
-    client = get_client()
+    if not embedding_service.available:
+        raise RuntimeError(
+            "OpenAI embedding service is not configured. "
+            "Check OPENAI_API_KEY in backend/.env."
+        )
 
     print()
     print("Embedding knowledge base chunks...")
 
+    embeddings = embedding_service.embed_documents(
+        [chunk["content"] for chunk in chunks]
+    )
+
     embedded_chunks = []
 
-    for index, chunk in enumerate(chunks, start=1):
+    for index, (chunk, embedding) in enumerate(
+        zip(chunks, embeddings),
+        start=1,
+    ):
         print(
             f"  [{index}/{len(chunks)}] "
             f"{chunk['source']}:{chunk['chunk']}"
@@ -266,10 +255,7 @@ def main():
         embedded_chunks.append(
             {
                 **chunk,
-                "embedding": embed_text(
-                    client,
-                    chunk["content"],
-                ),
+                "embedding": embedding,
             }
         )
 
@@ -294,9 +280,8 @@ def main():
             f"{query}"
         )
 
-        query_embedding = embed_text(
-            client,
-            query,
+        query_embedding = embedding_service.embed_query(
+            query
         )
 
         raw = retrieve_raw(

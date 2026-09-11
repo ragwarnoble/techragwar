@@ -1,42 +1,39 @@
-from functools import lru_cache
+"""Semantic retrieval using OpenAI embeddings."""
 
-from sentence_transformers import SentenceTransformer
+from __future__ import annotations
 
 from .ingest import load_chunks
-
-
-MODEL_NAME = "all-MiniLM-L6-v2"
-
-
-@lru_cache(maxsize=1)
-def get_model() -> SentenceTransformer:
-    """Load the embedding model once per process."""
-    return SentenceTransformer(MODEL_NAME)
+from .openai_embeddings import embedding_service
 
 
 def cosine_similarity(
-    query_vector,
-    document_vector,
+    query_vector: list[float],
+    document_vector: list[float],
 ) -> float:
     """Calculate cosine similarity between two vectors."""
 
-    query_norm = (
-        sum(value * value for value in query_vector)
-        ** 0.5
-    )
+    if not query_vector or not document_vector:
+        return 0.0
 
-    document_norm = (
-        sum(value * value for value in document_vector)
-        ** 0.5
-    )
+    query_norm = sum(
+        value * value
+        for value in query_vector
+    ) ** 0.5
+
+    document_norm = sum(
+        value * value
+        for value in document_vector
+    ) ** 0.5
 
     if query_norm == 0 or document_norm == 0:
         return 0.0
 
     dot_product = sum(
         query_value * document_value
-        for query_value, document_value
-        in zip(query_vector, document_vector)
+        for query_value, document_value in zip(
+            query_vector,
+            document_vector,
+        )
     )
 
     return dot_product / (
@@ -44,23 +41,29 @@ def cosine_similarity(
     )
 
 
-@lru_cache(maxsize=1)
-def build_index() -> list[dict]:
-    """Embed all knowledge chunks once."""
+def build_index(
+    chunks: list[dict] | None = None,
+) -> list[dict]:
+    """
+    Build an in-memory semantic index.
 
-    chunks = load_chunks()
+    Document embeddings are generated through the
+    configured OpenAI embedding service.
+    """
+
+    if chunks is None:
+        chunks = load_chunks()
 
     if not chunks:
         return []
 
-    model = get_model()
+    texts = [
+        chunk["content"]
+        for chunk in chunks
+    ]
 
-    embeddings = model.encode(
-        [
-            chunk["content"]
-            for chunk in chunks
-        ],
-        normalize_embeddings=True,
+    embeddings = embedding_service.embed_documents(
+        texts
     )
 
     return [
@@ -77,6 +80,7 @@ def build_index() -> list[dict]:
 
 def retrieve_semantic(
     query: str,
+    embedded_chunks: list[dict] | None = None,
     limit: int = 3,
 ) -> list[dict]:
     """Retrieve chunks using semantic similarity."""
@@ -84,18 +88,22 @@ def retrieve_semantic(
     if limit <= 0:
         return []
 
-    if not query.strip():
+    if not query or not query.strip():
         return []
 
-    model = get_model()
-    query_embedding = model.encode(
-        query,
-        normalize_embeddings=True,
+    if embedded_chunks is None:
+        embedded_chunks = build_index()
+
+    if not embedded_chunks:
+        return []
+
+    query_embedding = embedding_service.embed_query(
+        query
     )
 
     scored = []
 
-    for chunk in build_index():
+    for chunk in embedded_chunks:
         score = cosine_similarity(
             query_embedding,
             chunk["embedding"],
