@@ -2,7 +2,8 @@ const API_URL =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000/api"
-    : "https://improved-umbrella-6v45gw54jgpr3x56r-8000.app.github.dev/api";
+    : "https://ragwar-tech-api.onrender.com/api";
+
 
 export function initializeAIChat() {
 
