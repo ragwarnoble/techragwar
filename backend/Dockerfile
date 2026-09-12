@@ -9,7 +9,13 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
 COPY app ./app
+
+RUN chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8000
 
