@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ContactCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    message: str
+    message: str = Field(..., min_length=1, max_length=5000)
 
 
 class ContactResponse(BaseModel):
@@ -20,7 +20,7 @@ class ContactResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=10000)
 
 
 class ChatResponse(BaseModel):
