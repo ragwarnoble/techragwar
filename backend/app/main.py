@@ -14,9 +14,17 @@ app = FastAPI(
 )
 
 
-origins = [
-    origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
-]
+origins = []
+
+for origin in settings.cors_origins.split(","):
+    origin = origin.strip()
+    if not origin:
+        continue
+
+    if not origin.startswith(("http://", "https://")):
+        origin = f"https://{origin}"
+
+    origins.append(origin)
 
 
 app.add_middleware(
@@ -39,5 +47,4 @@ def root():
         "version": settings.app_version,
         "docs": "/docs",
         "health": "/api/health",
-        "cors_origins": origins,
     }
