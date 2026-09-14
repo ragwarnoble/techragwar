@@ -39,4 +39,5 @@ def root():
         "version": settings.app_version,
         "docs": "/docs",
         "health": "/api/health",
+        "cors_origins": origins,
     }
