@@ -1,0 +1,252 @@
+---
+title: "Do Frontend Frameworks Still Matter in the Age of AI?"
+subtitle: "What a framework-free experiment taught me about state, routing, and engineering judgment"
+author: "Ragwar Tech"
+date: "2026-11-06"
+draft: false
+description: "What a framework-free experiment taught me about state, routing, and engineering judgment"
+tags: ["Software Engineering", "JavaScript", "React", "AI Engineering", "Frontend Development"]
+---
+
+*What a framework-free experiment taught me about state, routing, and engineering judgment.*
+
+**The more code AI can generate, the more tempting it is to believe we no longer need frameworks.** Why depend on React, Vue, or Angular when an AI assistant can write components, manage events, and wire up pages in seconds?
+
+I tested that intuition by experimenting with a framework-free frontend. At first, the freedom was appealing. No component lifecycle to learn, no framework-specific rules, and fewer dependencies. But as soon as the interface needed to respond to user input, preserve selections, navigate between screens, and fetch data, a familiar pattern emerged: I was rebuilding parts of a framework.
+
+That led to a better question. It is not whether AI *can* write an application without a framework. It is whether doing so creates a system we can reliably maintain, test, secure, and extend.
+
+## The four jobs hiding behind a simple UI
+
+Consider a hypothetical investment dashboard. A user selects a portfolio, switches from a one-month to a one-year view, navigates to analytics, and loads current holdings. Underneath that simple interaction are four distinct responsibilities:
+
+| Responsibility | Question it answers | Example |
+| --- | --- | --- |
+| Components | How is the interface organized? | Portfolio card, selector, analytics chart |
+| State management | What changes, and who owns it? | Selected portfolio and reporting period |
+| Routing | Which view corresponds to this URL? | `/dashboard` or `/portfolios/001` |
+| Integration | Where does authoritative data come from? | A backend portfolio API |
+
+Frameworks do not make these responsibilities disappear. They offer conventions and mechanisms for coordinating them.
+
+## State management: more than a variable
+
+**State is information that changes over time and affects the interface or its behavior.** A dropdown selection is state. So are a loading indicator, an authentication session, the contents of a form, and a cached API response—but they should not all be managed the same way.
+
+In plain JavaScript, we can represent a selected portfolio with a variable:
+
+```js
+let selectedPortfolio = "balanced";
+
+function selectPortfolio(id) {
+  selectedPortfolio = id;
+  renderDashboard(); // We coordinate the UI update.
+}
+```
+
+This works. But as several components depend on the same value, we must decide who updates it, who subscribes to changes, how stale requests are handled, and how DOM elements stay synchronized.
+
+React gives us a declarative alternative:
+
+```tsx
+import { useState } from "react";
+
+function PortfolioSelector() {
+  const [portfolioId, setPortfolioId] = useState("balanced");
+
+  return (
+    <label>
+      Portfolio
+      <select
+        value={portfolioId}
+        onChange={(event) => setPortfolioId(event.target.value)}
+      >
+        <option value="balanced">Balanced Ethical</option>
+        <option value="growth">Growth Ethical</option>
+      </select>
+    </label>
+  );
+}
+```
+
+Calling `setPortfolioId` schedules a React update. We describe the UI for the current state; React coordinates rendering and commits the necessary DOM changes. It does **not** mean every state problem is solved automatically.
+
+A useful taxonomy is:
+
+- **Local UI state:** active tab, modal visibility, or input value; usually kept close to the component.
+- **Shared client state:** a selection needed across distant components; perhaps Context or a dedicated store.
+- **Server state:** holdings, prices, or performance retrieved remotely; often better managed with a cache-oriented tool such as TanStack Query.
+- **URL state:** a portfolio ID or reporting period that should survive refreshes and be shareable.
+- **Authoritative state:** permissions, approvals, financial records, and audit evidence; enforced and persisted on the backend.
+
+The design objective is not “put everything in global state.” It is to give each kind of state an appropriate owner.
+
+## Routing: the contract between a URL and a view
+
+Routing decides what the application should display for a given address. For example:
+
+```text
+/dashboard
+/portfolios
+/portfolios/001
+/portfolios/001?period=1Y
+/analytics
+```
+
+The path `/portfolios/001` identifies a resource. The query string `?period=1Y` captures a display preference. Keeping shareable selections in the URL has an important benefit: a colleague can reopen the same view, and refreshes do not silently reset the context.
+
+Without a router, a basic implementation might look like this:
+
+```js
+function navigate(path) {
+  window.history.pushState({}, "", path);
+  renderCurrentPath();
+}
+
+window.addEventListener("popstate", renderCurrentPath);
+
+function renderCurrentPath() {
+  const path = window.location.pathname;
+
+  if (path === "/dashboard") {
+    showDashboard();
+  } else if (path === "/analytics") {
+    showAnalytics();
+  } else {
+    showNotFound();
+  }
+}
+```
+
+We now own route matching, browser-history behavior, navigation events, and view rendering. The example is fine for a tiny application, but real products also need dynamic parameters, nested layouts, deep links, error handling, and often data loading.
+
+With React Router, intent becomes explicit:
+
+```tsx
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <nav>
+        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/analytics">Analytics</Link>
+      </nav>
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/portfolios/:id" element={<PortfolioDetail />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+The router maps URL patterns to components and participates in navigation. Deployment still matters: when a user directly opens a client-side route, the hosting server must return the application's entry point rather than a 404.
+
+## The subtle problem: asynchronous state
+
+Imagine switching rapidly between portfolios A and B. The network request for A starts first, but it might finish last. If we blindly accept whichever response arrives most recently, the screen can show A's holdings while B is selected.
+
+This is a **race condition**. A framework alone does not prevent it.
+
+An explicit React effect can ignore stale results:
+
+```tsx
+useEffect(() => {
+  let active = true;
+
+  setLoading(true);
+  setError(null);
+
+  fetchPortfolio(portfolioId)
+    .then((result) => {
+      if (active) setPortfolio(result);
+    })
+    .catch(() => {
+      if (active) setError("Unable to load portfolio");
+    })
+    .finally(() => {
+      if (active) setLoading(false);
+    });
+
+  return () => {
+    active = false;
+  };
+}, [portfolioId]);
+```
+
+This guards against outdated results updating the UI. It does not cancel the network request; cancellation requires an additional mechanism such as `AbortController` where supported. At scale, a server-state library can provide caching, deduplication, invalidation, and refetching strategies—but its behavior still needs deliberate configuration and testing.
+
+## What AI changes—and what it doesn't
+
+AI can generate a router, a state store, or a component library. It can write tests and propose refactors. That is a major productivity improvement.
+
+But code generation is only one part of software delivery. Someone still needs to answer:
+
+- Where should state live, and what is its source of truth?
+- Can an outdated asynchronous response corrupt the displayed view?
+- What happens when someone refreshes a deep link?
+- Which data can the client display, and which actions must the server authorize?
+- How will the architecture behave after six months of feature additions?
+
+AI reduces the cost of producing code. It does not automatically reduce the cost of *owning* that code.
+
+This is especially important for financial software. A React variable might say that a portfolio is selected or that an operation is approved. But access rights, real financial records, and governed execution must be checked against authoritative backend systems. A frontend is a presentation layer, not an authorization boundary.
+
+## A better experiment: measure the trade-offs
+
+The fair comparison is not “vanilla JavaScript bad; React good.” Both can produce excellent software. Instead, build the *same* small portfolio dashboard in two ways:
+
+1. Vanilla JavaScript, using the History API and explicit DOM updates.
+2. React + TypeScript + React Router, using component state and declarative rendering.
+
+Then introduce the same requirements: two portfolio choices, a reporting-period filter, a dynamic detail route, simulated delayed responses, loading/error states, and tests. Compare **implementation and maintenance effort**, not just first-draft lines of code.
+
+| Measure | Why it matters |
+| --- | --- |
+| Application code changed per feature | Reveals the cost of evolution |
+| Dependency and bundle footprint | Reveals delivery trade-offs |
+| Race-condition and navigation tests | Reveals reliability |
+| Accessibility checks | Reveals usability and correctness |
+| Deep-link and reload behavior | Reveals routing completeness |
+| Time to implement and review | Reveals actual engineering productivity |
+
+Do not claim performance superiority without measurements. Compare identical behavior and deployment conditions before drawing conclusions.
+
+## The architecture lesson for Ragwar Tech
+
+Our preferred design is to keep domain rules and backend authority independent of any specific view library:
+
+```text
+Browser UI (React, Vue, or vanilla JavaScript)
+          |
+    Presentation / URL state
+          |
+      API contracts
+          |
+Application services and domain logic
+          |
+Persistence, identity, policy, and audit evidence
+```
+
+This separation allows us to change frontend technology without rewriting the business rules. It also reinforces an essential governance principle: **a client-side state change is not proof of authorization or execution.**
+
+For complex dashboards, React + TypeScript is a sensible default for Ragwar Tech. For simple static pages, vanilla JavaScript or a lighter tool may be the better engineering decision. Framework selection should follow actual requirements, team capability, maintenance economics, and measurable constraints—not fashion.
+
+## Conclusion: frameworks are not obsolete; their value is changing
+
+My framework-free experiment did not prove that frameworks are mandatory. It revealed the recurring work frameworks help us avoid.
+
+In an AI-assisted world, the scarce skill is not typing boilerplate. It is deciding what should be built, where complexity belongs, how correctness is demonstrated, and which boundaries must never be bypassed.
+
+**Use frameworks to manage complexity, not create it. Use AI to accelerate implementation, not replace engineering judgment.**
+
+---
+
+### Notes and further reading
+
+All portfolio examples are hypothetical and are not investment advice. Code examples are instructional snippets, not a complete production application or a measured benchmark.
+
+[React: Managing State](https://react.dev/learn/managing-state) · [React: Synchronizing with Effects](https://react.dev/learn/synchronizing-with-effects) · [React Router documentation](https://reactrouter.com/) · [MDN: History API](https://developer.mozilla.org/en-US/docs/Web/API/History_API) · [TanStack Query](https://tanstack.com/query/latest).
