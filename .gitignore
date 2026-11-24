@@ -47,3 +47,8 @@ build/
 backend/data/index/
 backend/data/vectorstore/
 backend/data/embeddings/
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
