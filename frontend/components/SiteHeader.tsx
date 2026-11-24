@@ -8,6 +8,7 @@ export function SiteHeader() {
         <a href="/#services">Capabilities</a>
         <a href="/#approach">Our approach</a>
         <a href="/demo">Governance demo</a>
+        <a href="/articles">Insights</a>
         <a href="/#contact">Let’s talk ↗</a>
       </nav>
     </header>
