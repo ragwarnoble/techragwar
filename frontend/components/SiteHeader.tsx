@@ -5,9 +5,10 @@ export function SiteHeader() {
     <header>
       <a className="brand" href="/">RAGWAR <span>TECH</span></a>
       <nav aria-label="Main navigation">
-        <a href="#services">Capabilities</a>
-        <a href="#approach">Our approach</a>
-        <a href="#contact">Let’s talk ↗</a>
+        <a href="/#services">Capabilities</a>
+        <a href="/#approach">Our approach</a>
+        <a href="/demo">Governance demo</a>
+        <a href="/#contact">Let’s talk ↗</a>
       </nav>
     </header>
   </>);

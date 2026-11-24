@@ -1,0 +1,7 @@
+.page { max-width: 960px; margin: 0 auto; padding: 3rem 1rem; }
+.panel { border: 1px solid #64748b; border-radius: 1rem; padding: clamp(1rem, 4vw, 2rem); margin: 2rem 0; }
+.controls { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.5rem 0; }
+.controls button { padding: .75rem 1rem; border: 1px solid #64748b; border-radius: .5rem; background: #164e63; color: white; cursor: pointer; font: inherit; }
+.controls button:disabled { opacity: .5; cursor: not-allowed; }
+.controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 3px; }
+.panel li { margin: .75rem 0; overflow-wrap: anywhere; }
