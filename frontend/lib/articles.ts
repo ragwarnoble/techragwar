@@ -1,32 +1,31 @@
 import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
+import { parseArticle, publishedSummaries, validSlug, type Article, type ArticleSummary } from "./article-metadata";
 
-const directory = path.join(process.cwd(), "content/articles");
+export type { Article, ArticleSummary } from "./article-metadata";
 
-export type Article = {
-  slug: string; title: string; description: string; date: string;
-  tags: string[]; draft: boolean; body: string;
-};
-export type ArticleSummary = Omit<Article, "body" | "draft">;
-
-export function getArticle(slug: string, root = directory): Article | null {
-  if (!/^[a-z0-9-]+$/.test(slug)) return null;
-  const filename = path.join(root, `${slug}.mdx`);
-  if (!fs.existsSync(filename)) return null;
-  const { data, content } = matter(fs.readFileSync(filename, "utf8"));
-  return {
-    slug, title: String(data.title ?? slug), description: String(data.description ?? ""),
-    date: String(data.date ?? ""), tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-    draft: data.draft !== false, body: content,
-  };
+function missing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === "ENOENT";
 }
 
-export function getArticles(root = directory): ArticleSummary[] {
-  if (!fs.existsSync(root)) return [];
-  return fs.readdirSync(root).filter(f => f.endsWith(".mdx"))
-    .map(f => getArticle(f.slice(0, -4), root))
-    .filter((article): article is Article => !!article && !article.draft)
-    .map(({ slug, title, description, date, tags }) => ({ slug, title, description, date, tags }))
-    .sort((a, b) => b.date.localeCompare(a.date));
+export function getArticle(slug: string): Article | null {
+  if (!validSlug(slug)) return null;
+  try {
+    return parseArticle(slug, fs.readFileSync(path.join(process.cwd(), "content/articles", `${slug}.mdx`), "utf8"));
+  } catch (error) {
+    if (missing(error)) return null;
+    throw error;
+  }
+}
+
+export function getArticles(): ArticleSummary[] {
+  let files: string[];
+  try {
+    files = fs.readdirSync(path.join(process.cwd(), "content/articles"));
+  } catch (error) {
+    if (missing(error)) return [];
+    throw error;
+  }
+  return publishedSummaries(files.filter(file => file.endsWith(".mdx"))
+    .map(file => getArticle(file.slice(0, -4))));
 }
